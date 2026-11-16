@@ -1,0 +1,151 @@
+// --- Pick tab: constraints + browse grid + narrowing ----------------------
+
+import { el, money, toast, budgetControl, distanceControl } from "./ui.js";
+import { CATEGORIES, VIBES, SETTINGS, TIME_SLOTS, CITY_CENTER, photoFor } from "./data.js";
+import { getPlaces, getSavedPlaces, removeSaved } from "./store.js";
+import { placeCard, openDetail } from "./components.js";
+import { addToDraft } from "./planner.js";
+import { thisOrThat, bothPick, justDecide } from "./narrowing.js";
+import { openSwipe } from "./swipe.js";
+import { haversineKm } from "./geo.js";
+
+export async function renderPick(root, state) {
+  const all = await getPlaces();
+  const f = state.filters;
+
+  const head = el("header.page-head", {}, [
+    el("h1.page-title", { text: "What should we do?" }),
+    el("p.page-sub", { text: "Set the vibe, then browse or let the app narrow it down." }),
+  ]);
+
+  // --- Filter controls ---
+  const budgetCtl = budgetControl({ value: f.budget, onChange: (v) => { f.budget = v; applyFilters(); } });
+
+  // --- Distance (same slider + type-in control as budget) ---
+  if (!f.center) f.center = { lat: CITY_CENTER.lat, lng: CITY_CENTER.lng };
+  const distCtl = distanceControl({ value: f.distanceKm, onChange: (v) => { f.distanceKm = v; applyFilters(); } });
+  const centerLabel = el("span.dist-center", { text: f.nearMe ? "from your location" : `from ${CITY_CENTER.label}` });
+  const nearBtn = el("button.dist-near" + (f.nearMe ? ".on" : ""), { html: "📍 Near me", onclick: toggleNear });
+  const distRow = el("div.dist-row", {}, [ centerLabel, nearBtn ]);
+
+  function toggleNear() {
+    if (f.nearMe) { // back to the CBD
+      f.nearMe = false; f.center = { lat: CITY_CENTER.lat, lng: CITY_CENTER.lng };
+      centerLabel.textContent = `from ${CITY_CENTER.label}`; nearBtn.classList.remove("on"); nearBtn.innerHTML = "📍 Near me";
+      applyFilters(); return;
+    }
+    if (!navigator.geolocation) { toast("Location isn't available here"); return; }
+    nearBtn.innerHTML = "Locating…";
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        f.center = { lat: pos.coords.latitude, lng: pos.coords.longitude }; f.nearMe = true;
+        nearBtn.innerHTML = "📍 Near me"; nearBtn.classList.add("on");
+        centerLabel.textContent = "from your location"; applyFilters();
+      },
+      () => { nearBtn.innerHTML = "📍 Near me"; toast("Couldn't get your location — using the CBD"); },
+      { enableHighAccuracy: false, timeout: 8000 },
+    );
+  }
+
+  const timeSeg = el("div.seg", {}, Object.entries(TIME_SLOTS).map(([k, t]) =>
+    el("button" + (f.time === k ? ".on" : ""), { text: t.label, dataset: { k }, onclick: () => setSeg(timeSeg, "time", k) })));
+
+  const catChips = el("div.chips", {}, Object.entries(CATEGORIES).map(([k, c]) =>
+    chip(c.icon, c.label, f.cats.has(k), () => toggleSet(f.cats, k, applyFilters))));
+
+  const vibeChips = el("div.chips", {}, Object.entries(VIBES).map(([k, v]) =>
+    chip(v.icon, v.label, f.vibes.has(k), () => toggleSet(f.vibes, k, applyFilters))));
+
+  const setSeg2 = el("div.seg", {}, Object.entries(SETTINGS).map(([k, s]) =>
+    el("button" + (f.setting === k ? ".on" : ""), { text: `${s.icon} ${s.label}`, dataset: { k }, onclick: () => setSeg(setSeg2, "setting", k) })));
+
+  function setSeg(container, key, val) {
+    f[key] = (f[key] === val && key !== "setting") ? null : val;
+    container.querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.k === f[key]));
+    applyFilters();
+  }
+
+  const controls = el("div.panel", {}, [
+    el("div.panel-label", { text: "Budget for two" }),
+    budgetCtl,
+    el("div.panel-label", { text: "Max distance", style: "margin-top:16px" }),
+    distCtl, distRow,
+    el("div.panel-label", { text: "Time", style: "margin-top:16px" }), timeSeg,
+    el("div.panel-label", { text: "Category", style: "margin-top:16px" }), catChips,
+    el("div.panel-label", { text: "Vibe", style: "margin-top:16px" }), vibeChips,
+    el("div.panel-label", { text: "Setting", style: "margin-top:16px" }), setSeg2,
+  ]);
+
+  // --- Saved-for-later strip (from swipe right) ---
+  const savedWrap = el("div.saved-wrap");
+  async function refreshSaved() {
+    const saved = await getSavedPlaces();
+    savedWrap.replaceChildren();
+    if (!saved.length) return;
+    savedWrap.append(
+      el("div.section-label", { text: `♡ Saved for later (${saved.length})`, style: "margin-top:4px" }),
+      el("div.saved-strip", {}, saved.map(p => el("div.saved-chip", {}, [
+        el("button.saved-chip-main", { onclick: () => openDetail(p) }, [
+          el("img.saved-thumb", { src: p.photo || photoFor(p), alt: "" }),
+          el("div.saved-chip-name", { text: p.name }),
+        ]),
+        el("button.saved-remove", { html: "✕", "aria-label": `Remove ${p.name}`,
+          onclick: async () => { await removeSaved(p.id); refreshSaved(); } }),
+      ]))),
+    );
+  }
+
+  // --- Narrowing buttons ---
+  const narrowBtns = el("div.panel", {}, [
+    el("div.panel-label", { text: "Can't decide?" }),
+    el("button.btn.btn-primary.btn-block.btn-lg", { html: "🔥 Swipe to pick", style: "margin-bottom:12px",
+      onclick: () => {
+        const list = filtered();
+        if (!list.length) { toast("No places match — loosen your filters"); return; }
+        openSwipe(list, { onDone: refreshSaved });
+      } }),
+    el("div.chips", { style: "gap:10px" }, [
+      el("button.btn.btn-soft", { text: "⚔️ This or that", onclick: () => thisOrThat(filtered(), onNarrowed) }),
+      el("button.btn.btn-soft", { text: "👥 Both pick", onclick: () => bothPick(filtered(), onNarrowed) }),
+      el("button.btn.btn-soft", { text: "🎲 Just decide", onclick: () => justDecide(filtered(), onNarrowed) }),
+    ]),
+  ]);
+
+  const countLabel = el("div.section-label");
+  const grid = el("div.grid");
+  const results = el("div", {}, [ countLabel, grid ]);
+
+  function filtered() {
+    return all.filter(p => {
+      if (p.est_cost_for_two > f.budget) return false;
+      if (f.center && p.lat != null && p.lng != null && haversineKm(f.center, p) > f.distanceKm) return false;
+      if (f.cats.size && !f.cats.has(p.category)) return false;
+      if (f.vibes.size && !(p.vibe || []).some(v => f.vibes.has(v))) return false;
+      if (f.setting && f.setting !== "either" && p.setting !== "either" && p.setting !== f.setting) return false;
+      return true;
+    });
+  }
+
+  function onNarrowed(place, action) {
+    if (action === "add") { addToDraft(place.id); toast(`Added ${place.name} to your day`); }
+    else openDetail(place);
+  }
+
+  function applyFilters() {
+    const list = filtered();
+    countLabel.textContent = `${list.length} place${list.length === 1 ? "" : "s"} match`;
+    grid.replaceChildren(...list.map(p => placeCard(p, openDetail)));
+    if (!list.length) grid.replaceChildren(el("p.page-sub", { text: "Nothing matches — try a bigger budget or fewer filters." }));
+  }
+
+  root.append(head, savedWrap, controls, narrowBtns, results);
+  applyFilters();
+  refreshSaved();
+}
+
+function chip(icon, label, on, onClick) {
+  return el("button.chip" + (on ? ".on" : ""), { onclick(e) { e.currentTarget.classList.toggle("on"); onClick(); } }, [
+    el("span.ico", { text: icon }), label,
+  ]);
+}
+function toggleSet(set, key, after) { set.has(key) ? set.delete(key) : set.add(key); after(); }

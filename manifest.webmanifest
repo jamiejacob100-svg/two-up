@@ -1,0 +1,15 @@
+{
+  "name": "Two Up — date planner",
+  "short_name": "Two Up",
+  "description": "A private date-planning app for two: narrow down what to do and plan a whole day out in Sydney.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fbf5f0",
+  "theme_color": "#e8846a",
+  "icons": [
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

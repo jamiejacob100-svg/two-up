@@ -1,0 +1,84 @@
+// --- Supabase backend (live mode) -----------------------------------------
+// Loaded lazily by store.js only when Supabase is configured, so demo mode
+// never pulls in the Supabase client. Same API shape as db.local.js.
+
+import { supabase } from "./supabase.js";
+
+async function currentUserId() {
+  const { data } = await supabase.auth.getUser();
+  return data?.user?.id || null;
+}
+
+// --- Places ---
+export async function getPlaces() {
+  const { data, error } = await supabase
+    .from("places").select("*").order("created_at", { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+export async function getPlace(id) {
+  const { data, error } = await supabase.from("places").select("*").eq("id", id).maybeSingle();
+  if (error) throw error;
+  return data || null;
+}
+export async function addPlace(place) {
+  const added_by = await currentUserId();
+  const row = {
+    google_place_id: place.google_place_id || null,
+    name: place.name,
+    category: place.category,
+    area: place.area || null,
+    est_cost_for_two: place.est_cost_for_two ?? null,
+    vibe: place.vibe || [],
+    setting: place.setting || "either",
+    lat: place.lat ?? null,
+    lng: place.lng ?? null,
+    our_notes: place.our_notes || "",
+    our_rating: place.our_rating ?? null,
+    added_by,
+  };
+  // Only touch the newer columns when there's a value — so a basic add still
+  // works before the photo_url/hours columns have been added (SETUP step).
+  if (place.photo_url) row.photo_url = place.photo_url;
+  if (place.hours) row.hours = place.hours;
+  const { data, error } = await supabase.from("places").insert(row).select().single();
+  if (error) throw error;
+  return data;
+}
+
+// --- Plans ---
+export async function getPlans() {
+  const { data, error } = await supabase
+    .from("plans").select("*").order("updated_at", { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+export async function getPlan(id) {
+  const { data, error } = await supabase.from("plans").select("*").eq("id", id).maybeSingle();
+  if (error) throw error;
+  return data || null;
+}
+export async function savePlan(plan) {
+  const row = {
+    title: plan.title || null,
+    date: plan.date || null,
+    mode: plan.mode || "together",
+    template: plan.template || null,
+    stops: plan.stops || [],
+    plan_hints: plan.plan_hints || null,
+    budget: plan.budget ?? null,
+  };
+  if (plan.id) {
+    const { error } = await supabase.from("plans").update(row).eq("id", plan.id);
+    if (error) throw error;
+    return plan.id;
+  }
+  row.created_by = await currentUserId();
+  const { data, error } = await supabase.from("plans").insert(row).select("id").single();
+  if (error) throw error;
+  return data.id;
+}
+export async function deletePlan(id) {
+  const { error } = await supabase.from("plans").delete().eq("id", id);
+  if (error) throw error;
+}
