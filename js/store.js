@@ -20,6 +20,7 @@ async function db() {
 export async function getPlaces()      { return (await db()).getPlaces(); }
 export async function getPlace(id)     { return (await db()).getPlace(id); }
 export async function addPlace(p)      { return (await db()).addPlace(p); }
+export async function updatePlace(id, p){ return (await db()).updatePlace(id, p); }
 export async function getPlans()       { return (await db()).getPlans(); }
 export async function getPlan(id)      { return (await db()).getPlan(id); }
 export async function savePlan(p)      { return (await db()).savePlan(p); }

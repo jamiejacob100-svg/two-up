@@ -1,8 +1,8 @@
 // --- Places tab: list all places + add a new one --------------------------
 
 import { el, money, toast, openSheet } from "./ui.js";
-import { CATEGORIES, VIBES, SETTINGS, DAYS, DEMO_SEARCH_RESULTS } from "./data.js";
-import { getPlaces, addPlace } from "./store.js";
+import { CATEGORIES, CUISINES, CUISINE_CATS, VIBES, SETTINGS, DAYS, DEMO_SEARCH_RESULTS } from "./data.js";
+import { getPlaces, addPlace, updatePlace } from "./store.js";
 import { placeCard, openDetail } from "./components.js";
 import { DEMO_MODE, GOOGLE_ENABLED } from "./config.js";
 import { searchPlaces } from "./places-api.js";
@@ -17,7 +17,8 @@ export async function renderPlaces(root, state) {
 
   root.append(el("button.btn.btn-primary.btn-block.btn-lg", { text: "＋ Add a place", style: "margin-bottom:18px", onclick: () => addPlaceFlow(state) }));
 
-  root.append(el("div.grid", {}, all.map(p => placeCard(p, openDetail))));
+  const openWithEdit = (pl) => openDetail(pl, { onEdit: (x) => editPlaceFlow(x, () => state.rerender()) });
+  root.append(el("div.grid", {}, all.map(p => placeCard(p, openWithEdit))));
 }
 
 // Add-place flow: search (demo = canned results) → pick → tag it.
@@ -28,67 +29,25 @@ function addPlaceFlow(state) {
   if (!DEMO_MODE && !GOOGLE_ENABLED) manualStep(); else searchStep();
 
   function manualStep() {
-    let cat = "coffee", setting = "either";
-    const vibes = new Set();
-    const name = el("input.input", { placeholder: "Place name", autofocus: true });
-    const area = el("input.input", { placeholder: "Area / suburb (e.g. Surry Hills)" });
-    const cost = el("input.input", { type: "number", min: "0", step: "5", placeholder: "e.g. 40" });
-    const hours = el("input.input", { placeholder: "e.g. 8am – 4pm" });
-    const photo = el("input.input", { type: "url", placeholder: "https://… image link" });
-    const notes = el("textarea.input", { placeholder: "What's good about it?" });
-
-    // Weekly specials — one optional line per day (feeds the Weekly deals filter).
-    const dealInputs = DAYS.map(d => ({ key: d.key,
-      input: el("input.input.deal-input", { placeholder: `${d.full} special (e.g. $10 burgers)` }) }));
-    const dealsField = el("details.deals-field", {}, [
-      el("summary", { text: "🏷️ Weekly specials (optional)" }),
-      el("div.deals-inputs", {}, dealInputs.map((di, i) =>
-        el("div.deal-input-row", {}, [ el("span.deal-input-day", { text: DAYS[i].label }), di.input ]))),
-    ]);
-
-    const catSeg = el("div.chips", {}, Object.entries(CATEGORIES).map(([k, c]) =>
-      el("button.chip" + (k === cat ? ".on" : ""), { dataset: { k }, onclick: () => {
-        cat = k; catSeg.querySelectorAll(".chip").forEach(x => x.classList.toggle("on", x.dataset.k === k));
-      } }, [ el("span.ico", { text: c.icon }), c.label ])));
-    const vibeSeg = el("div.chips", {}, Object.entries(VIBES).map(([k, v]) =>
-      el("button.chip", { onclick: (e) => { e.currentTarget.classList.toggle("on"); vibes.has(k) ? vibes.delete(k) : vibes.add(k); } },
-        [ el("span.ico", { text: v.icon }), v.label ])));
-    const setSeg = el("div.seg", {}, Object.entries(SETTINGS).map(([k, s]) =>
-      el("button" + (k === setting ? ".on" : ""), { dataset: { k }, text: `${s.icon} ${s.label}`, onclick: () => {
-        setting = k; setSeg.querySelectorAll("button").forEach(x => x.classList.toggle("on", x.dataset.k === k));
-      } })));
-
+    const form = placeForm({});
     body.replaceChildren(
       el("p.lede", { text: "Add a place with your own details." }),
-      el("div.field", {}, [ el("label", { text: "Name" }), name ]),
-      el("div.field", {}, [ el("label", { text: "Area" }), area ]),
-      el("div.field", {}, [ el("label", { text: "Category" }), catSeg ]),
-      el("div.field", {}, [ el("label", { text: "Our cost estimate for two (AUD)" }), cost ]),
-      el("div.field", {}, [ el("label", { text: "Vibe" }), vibeSeg ]),
-      el("div.field", {}, [ el("label", { text: "Setting" }), setSeg ]),
-      el("div.field", {}, [ el("label", { text: "Opening hours (optional)" }), hours ]),
-      el("div.field", {}, [ el("label", { text: "Photo link (optional)" }), photo ]),
-      el("div.field", {}, [ el("label", { text: "Our notes" }), notes ]),
-      el("div.field", {}, [ el("label", { text: "Weekly deals" }), dealsField ]),
+      form.node,
       el("button.btn.btn-primary.btn-block.btn-lg", { text: "Save place", onclick: save }),
     );
-
     async function save() {
-      if (!name.value.trim()) { toast("Give it a name first"); return; }
-      const deals = {};
-      dealInputs.forEach(di => { const v = di.input.value.trim(); if (v) deals[di.key] = v; });
+      const v = form.collect();
+      if (!v.name) { toast("Give it a name first"); return; }
       await addPlace({
-        google_place_id: "", name: name.value.trim(), category: cat,
-        area: area.value.trim() || "Sydney",
-        est_cost_for_two: cost.value ? +cost.value : 0,
-        vibe: [...vibes], setting, lat: null, lng: null,
-        our_notes: notes.value.trim(),
-        photo_url: photo.value.trim() || null,
-        hours: hours.value.trim() || null,
-        deals: Object.keys(deals).length ? deals : undefined,
+        google_place_id: "", name: v.name, category: v.category, area: v.area,
+        est_cost_for_two: v.est_cost_for_two, vibe: v.vibe, setting: v.setting,
+        lat: null, lng: null, our_notes: v.our_notes,
+        photo_url: v.photo_url, hours: v.hours,
+        cuisine: v.cuisine || undefined,
+        deals: Object.keys(v.deals).length ? v.deals : undefined,
       });
       close();
-      toast(`Added ${name.value.trim()} ♡`);
+      toast(`Added ${v.name} ♡`);
       state.rerender();
     }
   }
@@ -186,5 +145,125 @@ function addPlaceFlow(state) {
         state.rerender();
       }}),
     );
+  }
+}
+
+// --- Shared place form (used by manual add + edit) -------------------------
+// Returns { node, collect } — `collect()` reads the current field values.
+function placeForm(initial = {}) {
+  let cat = initial.category || "coffee";
+  let setting = initial.setting || "either";
+  let cuisine = initial.cuisine || null;
+  const vibes = new Set(initial.vibe || []);
+
+  const name  = el("input.input", { placeholder: "Place name", value: initial.name || "" });
+  const area  = el("input.input", { placeholder: "Area / suburb (e.g. Surry Hills)", value: initial.area || "" });
+  const cost  = el("input.input", { type: "number", min: "0", step: "5", placeholder: "e.g. 40",
+                     value: initial.est_cost_for_two != null ? String(initial.est_cost_for_two) : "" });
+  const hours = el("input.input", { placeholder: "e.g. 8am – 4pm", value: initial.hours || "" });
+  const photo = el("input.input", { type: "url", placeholder: "https://… image link", value: initial.photo_url || "" });
+  const notes = el("textarea.input", { placeholder: "What's good about it?" }, [ initial.our_notes || "" ]);
+
+  // Cuisine — single-select, and only meaningful for the food categories.
+  const cuisineChips = el("div.chips", {}, Object.entries(CUISINES).map(([k, c]) =>
+    el("button.chip" + (cuisine === k ? ".on" : ""), { dataset: { k }, onclick: () => {
+      cuisine = (cuisine === k) ? null : k;
+      cuisineChips.querySelectorAll(".chip").forEach(x => x.classList.toggle("on", cuisine && x.dataset.k === cuisine));
+    } }, [ el("span.ico", { text: c.icon }), c.label ])));
+  const cuisineField = el("div.field", {}, [ el("label", { text: "Cuisine" }), cuisineChips ]);
+  const syncCuisine = () => { cuisineField.hidden = !CUISINE_CATS.includes(cat); };
+
+  const catSeg = el("div.chips", {}, Object.entries(CATEGORIES).map(([k, c]) =>
+    el("button.chip" + (k === cat ? ".on" : ""), { dataset: { k }, onclick: () => {
+      cat = k; catSeg.querySelectorAll(".chip").forEach(x => x.classList.toggle("on", x.dataset.k === k));
+      syncCuisine();
+    } }, [ el("span.ico", { text: c.icon }), c.label ])));
+  const vibeSeg = el("div.chips", {}, Object.entries(VIBES).map(([k, v]) =>
+    el("button.chip" + (vibes.has(k) ? ".on" : ""), { onclick: (e) => {
+      e.currentTarget.classList.toggle("on"); vibes.has(k) ? vibes.delete(k) : vibes.add(k);
+    } }, [ el("span.ico", { text: v.icon }), v.label ])));
+  const setSeg = el("div.seg", {}, Object.entries(SETTINGS).map(([k, s]) =>
+    el("button" + (k === setting ? ".on" : ""), { dataset: { k }, text: `${s.icon} ${s.label}`, onclick: () => {
+      setting = k; setSeg.querySelectorAll("button").forEach(x => x.classList.toggle("on", x.dataset.k === k));
+    } })));
+
+  const dealInputs = DAYS.map(d => ({ key: d.key,
+    input: el("input.input.deal-input", { placeholder: `${d.full} special (e.g. $10 burgers)`,
+             value: (initial.deals && initial.deals[d.key]) || "" }) }));
+  const hadDeals = initial.deals && Object.keys(initial.deals).length;
+  const dealsField = el("details.deals-field", hadDeals ? { open: true } : {}, [
+    el("summary", { text: "🏷️ Weekly specials (optional)" }),
+    el("div.deals-inputs", {}, dealInputs.map((di, i) =>
+      el("div.deal-input-row", {}, [ el("span.deal-input-day", { text: DAYS[i].label }), di.input ]))),
+  ]);
+
+  const node = el("div", {}, [
+    el("div.field", {}, [ el("label", { text: "Name" }), name ]),
+    el("div.field", {}, [ el("label", { text: "Area" }), area ]),
+    el("div.field", {}, [ el("label", { text: "Category" }), catSeg ]),
+    cuisineField,
+    el("div.field", {}, [ el("label", { text: "Our cost estimate for two (AUD)" }), cost ]),
+    el("div.field", {}, [ el("label", { text: "Vibe" }), vibeSeg ]),
+    el("div.field", {}, [ el("label", { text: "Setting" }), setSeg ]),
+    el("div.field", {}, [ el("label", { text: "Opening hours (optional)" }), hours ]),
+    el("div.field", {}, [ el("label", { text: "Photo link (optional)" }), photo ]),
+    el("div.field", {}, [ el("label", { text: "Our notes" }), notes ]),
+    el("div.field", {}, [ el("label", { text: "Weekly deals" }), dealsField ]),
+  ]);
+  syncCuisine();
+
+  function collectDeals() {
+    const deals = {};
+    dealInputs.forEach(di => { const v = di.input.value.trim(); if (v) deals[di.key] = v; });
+    return deals;
+  }
+  function collect() {
+    return {
+      name: name.value.trim(),
+      area: area.value.trim() || "Sydney",
+      category: cat,
+      est_cost_for_two: cost.value ? +cost.value : 0,
+      vibe: [...vibes], setting,
+      our_notes: notes.value.trim(),
+      photo_url: photo.value.trim() || null,
+      hours: hours.value.trim() || null,
+      cuisine: CUISINE_CATS.includes(cat) ? cuisine : null,
+      deals: collectDeals(), // {} when none
+    };
+  }
+  return { node, collect };
+}
+
+// --- Edit an existing place ------------------------------------------------
+export function editPlaceFlow(place, onDone) {
+  const body = el("div");
+  const close = openSheet({ title: "Edit place", body });
+  const form = placeForm(place);
+  body.replaceChildren(
+    form.node,
+    el("button.btn.btn-primary.btn-block.btn-lg", { text: "Save changes", style: "margin-top:4px", onclick: save }),
+  );
+  async function save() {
+    const v = form.collect();
+    if (!v.name) { toast("Give it a name first"); return; }
+    const patch = {
+      name: v.name, category: v.category, area: v.area,
+      est_cost_for_two: v.est_cost_for_two, vibe: v.vibe, setting: v.setting,
+      our_notes: v.our_notes, photo_url: v.photo_url, hours: v.hours,
+    };
+    // Only touch the optional columns when they're in play — so a basic edit
+    // still works before the cuisine/deals columns exist, and clearing works
+    // once they do (if the place already had one, the column must exist).
+    if (v.cuisine || place.cuisine) patch.cuisine = v.cuisine || null;
+    const hadDeals = place.deals && Object.keys(place.deals).length;
+    if (Object.keys(v.deals).length || hadDeals) patch.deals = Object.keys(v.deals).length ? v.deals : null;
+    try {
+      await updatePlace(place.id, patch);
+      close();
+      toast(`Updated ${v.name}`);
+      onDone && onDone();
+    } catch (err) {
+      toast(err?.message?.includes("column") ? "Run the cuisine/deals DB columns first (SETUP)" : "Couldn't save — try again");
+    }
   }
 }

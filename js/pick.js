@@ -4,6 +4,7 @@ import { el, money, toast, budgetControl, distanceControl } from "./ui.js";
 import { CATEGORIES, CUISINES, CUISINE_CATS, cuisineOf, DAYS, dealFor, VIBES, SETTINGS, TIME_SLOTS, CITY_CENTER, photoFor } from "./data.js";
 import { getPlaces, getSavedPlaces, removeSaved } from "./store.js";
 import { placeCard, openDetail } from "./components.js";
+import { editPlaceFlow } from "./places.js";
 import { addToDraft } from "./planner.js";
 import { thisOrThat, bothPick, justDecide } from "./narrowing.js";
 import { openSwipe } from "./swipe.js";
@@ -175,7 +176,8 @@ export async function renderPick(root, state) {
     syncCuisine();
     const list = filtered();
     countLabel.textContent = `${list.length} place${list.length === 1 ? "" : "s"} match`;
-    grid.replaceChildren(...list.map(p => placeCard(p, openDetail, { deal: dealBadge(p) })));
+    const openP = (pl) => openDetail(pl, { onEdit: (x) => editPlaceFlow(x, () => state.rerender()) });
+    grid.replaceChildren(...list.map(p => placeCard(p, openP, { deal: dealBadge(p) })));
     if (!list.length) grid.replaceChildren(el("p.page-sub", { text: "Nothing matches — try a bigger budget or fewer filters." }));
   }
 

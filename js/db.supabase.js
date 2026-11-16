@@ -42,7 +42,19 @@ export async function addPlace(place) {
   if (place.photo_url) row.photo_url = place.photo_url;
   if (place.hours) row.hours = place.hours;
   if (place.deals && Object.keys(place.deals).length) row.deals = place.deals;
+  if (place.cuisine) row.cuisine = place.cuisine;
   const { data, error } = await supabase.from("places").insert(row).select().single();
+  if (error) throw error;
+  return data;
+}
+export async function updatePlace(id, patch) {
+  // Only send the fields present in `patch` — so a basic edit never touches the
+  // optional cuisine/deals columns unless the caller included them.
+  const allowed = ["name","category","area","est_cost_for_two","vibe","setting",
+                   "our_notes","our_rating","photo_url","hours","deals","cuisine","google_place_id"];
+  const row = {};
+  for (const k of allowed) if (patch[k] !== undefined) row[k] = patch[k];
+  const { data, error } = await supabase.from("places").update(row).eq("id", id).select().single();
   if (error) throw error;
   return data;
 }

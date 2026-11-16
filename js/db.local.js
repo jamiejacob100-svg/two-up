@@ -4,8 +4,9 @@
 
 import { DEMO_PLACES } from "./data.js";
 
-const LS_PLACES = "twoup.places.v1"; // user-added places
-const LS_PLANS  = "twoup.plans.v1";  // saved plans
+const LS_PLACES    = "twoup.places.v1";    // user-added places
+const LS_OVERRIDES = "twoup.place.ovr.v1"; // edits to any place (incl. demo seed)
+const LS_PLANS     = "twoup.plans.v1";     // saved plans
 
 function read(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key)) ?? fallback; }
@@ -21,7 +22,8 @@ export function uid(prefix = "x") {
 
 // --- Places ---
 export async function getPlaces() {
-  return [...DEMO_PLACES, ...read(LS_PLACES, [])];
+  const ov = read(LS_OVERRIDES, {});
+  return [...DEMO_PLACES, ...read(LS_PLACES, [])].map(p => ov[p.id] ? { ...p, ...ov[p.id] } : p);
 }
 export async function getPlace(id) {
   return (await getPlaces()).find(p => p.id === id) || null;
@@ -33,6 +35,17 @@ export async function addPlace(place) {
   added.push(rec);
   write(LS_PLACES, added);
   return rec;
+}
+export async function updatePlace(id, patch) {
+  // Added places get patched in place; demo/seed places get an override layer
+  // (so edits to them persist without mutating the hard-coded sample data).
+  const added = read(LS_PLACES, []);
+  const i = added.findIndex(p => p.id === id);
+  if (i >= 0) { added[i] = { ...added[i], ...patch }; write(LS_PLACES, added); return added[i]; }
+  const ov = read(LS_OVERRIDES, {});
+  ov[id] = { ...(ov[id] || {}), ...patch };
+  write(LS_OVERRIDES, ov);
+  return { id, ...ov[id] };
 }
 
 // --- Plans ---

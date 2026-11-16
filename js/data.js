@@ -37,7 +37,9 @@ const CUISINE_RULES = [
 ];
 
 export function cuisineOf(place) {
-  const hay = `${place.name || ""} ${place.our_notes || ""} ${(place.vibe || []).join(" ")}`;
+  // An explicit tag (set in the add/edit form) always wins; otherwise infer.
+  if (place && place.cuisine && CUISINES[place.cuisine]) return place.cuisine;
+  const hay = `${(place && place.name) || ""} ${(place && place.our_notes) || ""} ${((place && place.vibe) || []).join(" ")}`;
   for (const [key, re] of CUISINE_RULES) if (re.test(hay)) return key;
   return "fillers";
 }

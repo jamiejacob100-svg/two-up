@@ -98,7 +98,7 @@ function reviewEl(r) {
   ]);
 }
 
-export function openDetail(place) {
+export function openDetail(place, opts = {}) {
   const cat = CATEGORIES[place.category];
   const ourCost = `our est. ${money(place.est_cost_for_two)} for two`;
   const hero = el("img.detail-hero", { src: imgSrc(place), alt: place.name });
@@ -183,12 +183,17 @@ export function openDetail(place) {
     })();
   }
 
+  let closeDetail;
+  const editBtn = opts.onEdit && el("button.btn.btn-ghost", {
+    html: "✎ Edit", onclick: () => { closeDetail && closeDetail(); opts.onEdit(place); },
+  });
   const actions = [
+    editBtn,
     el("a.btn.btn-soft", { href: directionsUrl(place), target: "_blank", rel: "noopener", html: "🧭 Directions" }),
     el("button.btn.btn-primary", {
       html: "＋ Add to day",
       onclick: () => { addToDraft(place.id); toast(`Added ${place.name} to your day`); },
     }),
-  ];
-  openSheet({ title: place.name, body, actions });
+  ].filter(Boolean);
+  closeDetail = openSheet({ title: place.name, body, actions });
 }
