@@ -1,7 +1,7 @@
 // --- Pick tab: constraints + browse grid + narrowing ----------------------
 
 import { el, money, toast, budgetControl, distanceControl } from "./ui.js";
-import { CATEGORIES, VIBES, SETTINGS, TIME_SLOTS, CITY_CENTER, photoFor } from "./data.js";
+import { CATEGORIES, CUISINES, CUISINE_CATS, cuisineOf, VIBES, SETTINGS, TIME_SLOTS, CITY_CENTER, photoFor } from "./data.js";
 import { getPlaces, getSavedPlaces, removeSaved } from "./store.js";
 import { placeCard, openDetail } from "./components.js";
 import { addToDraft } from "./planner.js";
@@ -53,6 +53,22 @@ export async function renderPick(root, state) {
   const catChips = el("div.chips", {}, Object.entries(CATEGORIES).map(([k, c]) =>
     chip(c.icon, c.label, f.cats.has(k), () => toggleSet(f.cats, k, applyFilters))));
 
+  // --- Cuisine sub-filter (only visible when a food category is picked) ---
+  const cuisineChips = el("div.chips", {}, Object.entries(CUISINES).map(([k, c]) =>
+    chip(c.icon, c.label, f.cuisines.has(k), () => toggleSet(f.cuisines, k, applyFilters))));
+  const cuisineWrap = el("div.cuisine-sub", { hidden: true }, [
+    el("div.panel-label.cuisine-label", { text: "🍽️ Cuisine" }),
+    cuisineChips,
+  ]);
+  function syncCuisine() {
+    const show = CUISINE_CATS.some(k => f.cats.has(k));
+    cuisineWrap.hidden = !show;
+    if (!show && f.cuisines.size) {
+      f.cuisines.clear();
+      cuisineChips.querySelectorAll("button").forEach(b => b.classList.remove("on"));
+    }
+  }
+
   const vibeChips = el("div.chips", {}, Object.entries(VIBES).map(([k, v]) =>
     chip(v.icon, v.label, f.vibes.has(k), () => toggleSet(f.vibes, k, applyFilters))));
 
@@ -72,6 +88,7 @@ export async function renderPick(root, state) {
     distCtl, distRow,
     el("div.panel-label", { text: "Time", style: "margin-top:16px" }), timeSeg,
     el("div.panel-label", { text: "Category", style: "margin-top:16px" }), catChips,
+    cuisineWrap,
     el("div.panel-label", { text: "Vibe", style: "margin-top:16px" }), vibeChips,
     el("div.panel-label", { text: "Setting", style: "margin-top:16px" }), setSeg2,
   ]);
@@ -120,6 +137,8 @@ export async function renderPick(root, state) {
       if (p.est_cost_for_two > f.budget) return false;
       if (f.center && p.lat != null && p.lng != null && haversineKm(f.center, p) > f.distanceKm) return false;
       if (f.cats.size && !f.cats.has(p.category)) return false;
+      // Cuisine only narrows the food categories; everything else passes through.
+      if (f.cuisines.size && CUISINE_CATS.includes(p.category) && !f.cuisines.has(cuisineOf(p))) return false;
       if (f.vibes.size && !(p.vibe || []).some(v => f.vibes.has(v))) return false;
       if (f.setting && f.setting !== "either" && p.setting !== "either" && p.setting !== f.setting) return false;
       return true;
@@ -132,6 +151,7 @@ export async function renderPick(root, state) {
   }
 
   function applyFilters() {
+    syncCuisine();
     const list = filtered();
     countLabel.textContent = `${list.length} place${list.length === 1 ? "" : "s"} match`;
     grid.replaceChildren(...list.map(p => placeCard(p, openDetail)));

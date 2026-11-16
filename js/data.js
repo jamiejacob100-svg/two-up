@@ -16,6 +16,32 @@ export const CATEGORIES = {
   sidequest:{ label: "Side quests",              icon: "🗺️", c1: "#c9a15a", c2: "#ecd49f" },
 };
 
+// Cuisine sub-filter — only shown when a food category (lunch/dinner) is picked.
+export const CUISINES = {
+  italian:  { label: "Italian",  icon: "🍝" },
+  steak:    { label: "Steak",    icon: "🥩" },
+  japanese: { label: "Japanese", icon: "🍣" },
+  fillers:  { label: "Random stomach fillers", icon: "🍔" },
+};
+
+// The categories that get the cuisine sub-filter (Lil lunch + Fancy asf dinner).
+export const CUISINE_CATS = ["food", "view"];
+
+// Places have no explicit cuisine field, so infer one from the name/notes/vibe.
+// Anything that doesn't match italian/steak/japanese falls into "random stomach
+// fillers" — the catch-all.
+const CUISINE_RULES = [
+  ["italian",  /\b(italian|pizz|pasta|trattoria|osteria|napoli|roman|gnocchi|risotto|aperitivo|cicchetti)\b/i],
+  ["steak",    /\b(steak|grill|chophouse|parrilla|charr?grill|butcher|bbq|smoke|ribs?|brisket|rotisserie)\b/i],
+  ["japanese", /\b(sushi|ramen|izakaya|japanese|sake|teppan|yakitori|omakase|nikkei|udon|donburi|wagyu|robata|tonkatsu)\b/i],
+];
+
+export function cuisineOf(place) {
+  const hay = `${place.name || ""} ${place.our_notes || ""} ${(place.vibe || []).join(" ")}`;
+  for (const [key, re] of CUISINE_RULES) if (re.test(hay)) return key;
+  return "fillers";
+}
+
 export const VIBES = {
   chill:       { label: "Chill",       icon: "🌿" },
   social:      { label: "Social",      icon: "🥂" },

@@ -144,6 +144,16 @@ button { font: inherit; cursor: pointer; }
 .chip.on { background: var(--brand); border-color: transparent; color: #fff; }
 .chip .ico { font-size: 15px; }
 
+/* --- Cuisine sub-filter (nested under the food categories) --- */
+.cuisine-sub {
+  margin: 10px 0 2px; padding: 12px; border-radius: var(--r-sm);
+  background: var(--card-2); border: 1px solid var(--line);
+  border-left: 3px solid var(--brand);
+  animation: cuisine-in .18s ease;
+}
+.cuisine-sub .cuisine-label { margin: 0 0 8px !important; color: var(--brand-ink); }
+@keyframes cuisine-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
 /* --- Segmented control --- */
 .seg {
   display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
