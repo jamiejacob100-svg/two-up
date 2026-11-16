@@ -1,7 +1,7 @@
 // --- Places tab: list all places + add a new one --------------------------
 
 import { el, money, toast, openSheet } from "./ui.js";
-import { CATEGORIES, CUISINES, CUISINE_CATS, VIBES, SETTINGS, DAYS, DEMO_SEARCH_RESULTS } from "./data.js";
+import { CATEGORIES, CUISINES, CUISINE_CATS, ZONES, ZONE_CATS, VIBES, SETTINGS, DAYS, DEMO_SEARCH_RESULTS } from "./data.js";
 import { getPlaces, addPlace, updatePlace, deletePlace, removeSaved } from "./store.js";
 import { placeCard, openDetail } from "./components.js";
 import { DEMO_MODE, GOOGLE_ENABLED } from "./config.js";
@@ -44,6 +44,7 @@ function addPlaceFlow(state) {
         lat: null, lng: null, our_notes: v.our_notes,
         photo_url: v.photo_url, hours: v.hours,
         cuisine: v.cuisine || undefined,
+        zone: v.zone || undefined,
         deals: Object.keys(v.deals).length ? v.deals : undefined,
       });
       close();
@@ -154,6 +155,7 @@ function placeForm(initial = {}) {
   let cat = initial.category || "coffee";
   let setting = initial.setting || "either";
   let cuisine = initial.cuisine || null;
+  let zone = initial.zone || null;
   const vibes = new Set(initial.vibe || []);
 
   const name  = el("input.input", { placeholder: "Place name", value: initial.name || "" });
@@ -173,10 +175,19 @@ function placeForm(initial = {}) {
   const cuisineField = el("div.field", {}, [ el("label", { text: "Cuisine" }), cuisineChips ]);
   const syncCuisine = () => { cuisineField.hidden = !CUISINE_CATS.includes(cat); };
 
+  // Exploration zone — single-select, only meaningful for Jungle exploration.
+  const zoneChips = el("div.chips", {}, Object.entries(ZONES).map(([k, z]) =>
+    el("button.chip" + (zone === k ? ".on" : ""), { dataset: { k }, onclick: () => {
+      zone = (zone === k) ? null : k;
+      zoneChips.querySelectorAll(".chip").forEach(x => x.classList.toggle("on", zone && x.dataset.k === zone));
+    } }, [ el("span.ico", { text: z.icon }), z.label ])));
+  const zoneField = el("div.field", {}, [ el("label", { text: "Zone" }), zoneChips ]);
+  const syncZone = () => { zoneField.hidden = !ZONE_CATS.includes(cat); };
+
   const catSeg = el("div.chips", {}, Object.entries(CATEGORIES).map(([k, c]) =>
     el("button.chip" + (k === cat ? ".on" : ""), { dataset: { k }, onclick: () => {
       cat = k; catSeg.querySelectorAll(".chip").forEach(x => x.classList.toggle("on", x.dataset.k === k));
-      syncCuisine();
+      syncCuisine(); syncZone();
     } }, [ el("span.ico", { text: c.icon }), c.label ])));
   const vibeSeg = el("div.chips", {}, Object.entries(VIBES).map(([k, v]) =>
     el("button.chip" + (vibes.has(k) ? ".on" : ""), { onclick: (e) => {
@@ -202,6 +213,7 @@ function placeForm(initial = {}) {
     el("div.field", {}, [ el("label", { text: "Area" }), area ]),
     el("div.field", {}, [ el("label", { text: "Category" }), catSeg ]),
     cuisineField,
+    zoneField,
     el("div.field", {}, [ el("label", { text: "Our cost estimate for two (AUD)" }), cost ]),
     el("div.field", {}, [ el("label", { text: "Vibe" }), vibeSeg ]),
     el("div.field", {}, [ el("label", { text: "Setting" }), setSeg ]),
@@ -211,6 +223,7 @@ function placeForm(initial = {}) {
     el("div.field", {}, [ el("label", { text: "Weekly deals" }), dealsField ]),
   ]);
   syncCuisine();
+  syncZone();
 
   function collectDeals() {
     const deals = {};
@@ -228,6 +241,7 @@ function placeForm(initial = {}) {
       photo_url: photo.value.trim() || null,
       hours: hours.value.trim() || null,
       cuisine: CUISINE_CATS.includes(cat) ? cuisine : null,
+      zone: ZONE_CATS.includes(cat) ? zone : null,
       deals: collectDeals(), // {} when none
     };
   }
@@ -286,6 +300,7 @@ export function editPlaceFlow(place, onDone) {
     // still works before the cuisine/deals columns exist, and clearing works
     // once they do (if the place already had one, the column must exist).
     if (v.cuisine || place.cuisine) patch.cuisine = v.cuisine || null;
+    if (v.zone || place.zone) patch.zone = v.zone || null;
     const hadDeals = place.deals && Object.keys(place.deals).length;
     if (Object.keys(v.deals).length || hadDeals) patch.deals = Object.keys(v.deals).length ? v.deals : null;
     try {

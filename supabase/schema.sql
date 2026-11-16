@@ -25,6 +25,7 @@ create table if not exists public.places (
   hours             text,                            -- manual opening hours (no Google)
   deals             jsonb,                            -- weekly specials: {mon:"...", tue:"..."}
   cuisine           text,                             -- explicit cuisine tag: italian|steak|japanese|fillers
+  zone              text,                             -- exploration zone: royal|bluemtns|outback
   added_by          uuid references auth.users(id),
   created_at        timestamptz default now()
 );
@@ -34,6 +35,7 @@ alter table public.places add column if not exists photo_url text;
 alter table public.places add column if not exists hours text;
 alter table public.places add column if not exists deals jsonb;
 alter table public.places add column if not exists cuisine text;
+alter table public.places add column if not exists zone text;
 
 -- --- Saved day plans ---
 create table if not exists public.plans (

@@ -13,7 +13,7 @@ const view = document.getElementById("view");
 const state = {
   filters: { budget: 150, distanceKm: 25, center: null, nearMe: false,
              time: null, cats: new Set(), cuisines: new Set(), days: new Set(),
-             dealType: null, vibes: new Set(), setting: null },
+             dealType: null, zones: new Set(), vibes: new Set(), setting: null },
   tpl: "full", budget: 150, vibe: null, setting: null, workingPlan: null,
   rerender: () => route(),
 };

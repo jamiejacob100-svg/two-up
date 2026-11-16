@@ -44,6 +44,31 @@ export function cuisineOf(place) {
   return "fillers";
 }
 
+// Exploration zones — sub-filter shown under Jungle exploration (activity).
+export const ZONES = {
+  royal:    { label: "Royal National Park",     icon: "🌲" },
+  bluemtns: { label: "Blue Mountains",          icon: "⛰️" },
+  outback:  { label: "Random outback ventures", icon: "🏜️" },
+};
+
+// The categories that get the zone sub-filter (just Jungle exploration).
+export const ZONE_CATS = ["activity"];
+
+// Infer a zone from the name/area/notes when none is tagged explicitly.
+const ZONE_RULES = [
+  ["royal",    /\b(royal national park|royal np|bundeena|audley|wattamolla|garie|figure eight)\b/i],
+  ["bluemtns", /\b(blue mountains|katoomba|leura|wentworth falls|blackheath|three sisters|grand canyon|govett|national pass|glenbrook|megalong|jamison|ruined castle)\b/i],
+  ["outback",  /\b(outback|desert|broken hill|mungo|silverton|white cliffs|menindee)\b/i],
+];
+
+// The exploration zone a place sits in, or null. An explicit tag wins.
+export function zoneOf(place) {
+  if (place && place.zone && ZONES[place.zone]) return place.zone;
+  const hay = `${(place && place.name) || ""} ${(place && place.area) || ""} ${(place && place.our_notes) || ""}`;
+  for (const [key, re] of ZONE_RULES) if (re.test(hay)) return key;
+  return null;
+}
+
 export const VIBES = {
   chill:       { label: "Chill",       icon: "🌿" },
   social:      { label: "Social",      icon: "🥂" },
@@ -137,6 +162,18 @@ export const DEMO_PLACES = [
     area: "Pyrmont", est_cost_for_two: 45, vibe: ["social","adventurous"], setting: "either",
     lat: -33.8716, lng: 151.1930, our_rating: 4.0,
     our_notes: "Grab oysters + prawns, sit by the water. Mind the seagulls." },
+  { id: "d19", google_place_id: "", name: "Figure Eight Pools", category: "activity",
+    area: "Royal National Park", est_cost_for_two: 0, vibe: ["adventurous"], setting: "outdoor",
+    lat: -34.1619, lng: 151.0530, our_rating: 4.5, zone: "royal",
+    our_notes: "Big coastal hike to the rock pools. Only go at low tide — check the swell." },
+  { id: "d20", google_place_id: "", name: "Wentworth Falls Track", category: "activity",
+    area: "Blue Mountains", est_cost_for_two: 0, vibe: ["adventurous"], setting: "outdoor",
+    lat: -33.7120, lng: 150.3730, our_rating: 4.7, zone: "bluemtns",
+    our_notes: "Waterfall + National Pass clifftop walk. Pack water and good shoes." },
+  { id: "d21", google_place_id: "", name: "Silverton & Broken Hill", category: "activity",
+    area: "Outback NSW", est_cost_for_two: 0, vibe: ["adventurous"], setting: "outdoor",
+    lat: -31.9510, lng: 141.2200, our_rating: 4.4, zone: "outback",
+    our_notes: "Big-sky outback road trip — ghost town, mine lookouts, desert sunsets." },
 
   { id: "d11", google_place_id: "", name: "Mrs Macquarie's Chair", category: "view",
     area: "CBD", est_cost_for_two: 0, vibe: ["chill"], setting: "outdoor",
