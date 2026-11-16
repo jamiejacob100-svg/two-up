@@ -26,6 +26,7 @@ create table if not exists public.places (
   deals             jsonb,                            -- weekly specials: {mon:"...", tue:"..."}
   cuisine           text,                             -- explicit cuisine tag: italian|steak|japanese|fillers
   zone              text,                             -- exploration zone: royal|bluemtns|outback
+  treat             text,                             -- sweet-treat brand: yochi
   added_by          uuid references auth.users(id),
   created_at        timestamptz default now()
 );
@@ -36,6 +37,7 @@ alter table public.places add column if not exists hours text;
 alter table public.places add column if not exists deals jsonb;
 alter table public.places add column if not exists cuisine text;
 alter table public.places add column if not exists zone text;
+alter table public.places add column if not exists treat text;
 
 -- --- Saved day plans ---
 create table if not exists public.plans (

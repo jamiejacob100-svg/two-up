@@ -69,6 +69,22 @@ export function zoneOf(place) {
   return null;
 }
 
+// Sweet-treat brands — sub-filter shown under Cheeky sweet treat (dessert).
+export const TREATS = {
+  yochi: { label: "YoChi", icon: "🍦" },
+};
+
+// The categories that get the treat sub-filter (just Cheeky sweet treat).
+export const TREAT_CATS = ["dessert"];
+
+// The treat brand a place belongs to, or null. An explicit tag wins.
+export function treatOf(place) {
+  if (place && place.treat && TREATS[place.treat]) return place.treat;
+  const name = ((place && place.name) || "").toLowerCase();
+  if (/yo-?chi/.test(name)) return "yochi";
+  return null;
+}
+
 export const VIBES = {
   chill:       { label: "Chill",       icon: "🌿" },
   social:      { label: "Social",      icon: "🥂" },
@@ -211,6 +227,14 @@ export const DEMO_PLACES = [
     area: "Chippendale", est_cost_for_two: 34, vibe: ["social"], setting: "indoor",
     lat: -33.8880, lng: 151.1990, our_rating: 4.3,
     our_notes: "Fancy plated desserts. Sit at the counter." },
+  { id: "d22", google_place_id: "", name: "Yo-Chi Newtown", category: "dessert",
+    area: "Newtown", est_cost_for_two: 22, vibe: ["chill","social"], setting: "indoor",
+    lat: -33.8978, lng: 151.1793, our_rating: 4.4, treat: "yochi",
+    our_notes: "Self-serve froyo & açaí — pile on the toppings. 293 King St." },
+  { id: "d23", google_place_id: "", name: "Yo-Chi Surry Hills", category: "dessert",
+    area: "Surry Hills", est_cost_for_two: 22, vibe: ["chill","social"], setting: "indoor",
+    lat: -33.8846, lng: 151.2110, our_rating: 4.3, treat: "yochi",
+    our_notes: "Self-serve froyo & açaí, weigh-and-pay. 435 Crown St." },
 ];
 
 // Generate a soft gradient placeholder image as a data-URI SVG.

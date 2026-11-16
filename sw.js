@@ -1,7 +1,7 @@
 // --- Service worker: cache the app shell for offline / fast loads ---------
 // Bump CACHE when you change any shell file so clients pick up the new copy.
 
-const CACHE = "twoup-shell-v13";
+const CACHE = "twoup-shell-v14";
 const SHELL = [
   "./",
   "./index.html",
