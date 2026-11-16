@@ -131,6 +131,10 @@ button { font: inherit; cursor: pointer; }
 .btn-block { width: 100%; }
 .btn-lg { padding: 16px 20px; font-size: 16.5px; }
 .btn[disabled] { opacity: .45; pointer-events: none; }
+.btn-danger { background: var(--bad); border-color: transparent; color: #fff; }
+.btn-ghost.btn-danger { background: transparent; color: var(--bad); border-color: var(--bad); }
+.del-confirm { display: flex; gap: 10px; }
+.del-confirm .btn { flex: 1; }
 
 /* --- Chips / pills --- */
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }

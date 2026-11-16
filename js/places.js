@@ -2,7 +2,7 @@
 
 import { el, money, toast, openSheet } from "./ui.js";
 import { CATEGORIES, CUISINES, CUISINE_CATS, VIBES, SETTINGS, DAYS, DEMO_SEARCH_RESULTS } from "./data.js";
-import { getPlaces, addPlace, updatePlace } from "./store.js";
+import { getPlaces, addPlace, updatePlace, deletePlace, removeSaved } from "./store.js";
 import { placeCard, openDetail } from "./components.js";
 import { DEMO_MODE, GOOGLE_ENABLED } from "./config.js";
 import { searchPlaces } from "./places-api.js";
@@ -239,9 +239,40 @@ export function editPlaceFlow(place, onDone) {
   const body = el("div");
   const close = openSheet({ title: "Edit place", body });
   const form = placeForm(place);
+
+  // Delete, behind an inline confirm (deleting a place can't be undone).
+  const delArea = el("div.del-area", { style: "margin-top:10px" });
+  function showDelete() {
+    delArea.replaceChildren(
+      el("button.btn.btn-ghost.btn-block.btn-danger", { html: "🗑 Delete place", onclick: confirmDelete }),
+    );
+  }
+  function confirmDelete() {
+    delArea.replaceChildren(
+      el("p.page-sub", { text: `Delete “${place.name}”? This can't be undone.`, style: "margin:8px 0 10px;text-align:center" }),
+      el("div.del-confirm", {}, [
+        el("button.btn.btn-soft", { text: "Cancel", onclick: showDelete }),
+        el("button.btn.btn-danger", { text: "Delete", onclick: doDelete }),
+      ]),
+    );
+  }
+  async function doDelete() {
+    try {
+      await deletePlace(place.id);
+      try { await removeSaved(place.id); } catch {}
+      close();
+      toast(`Deleted ${place.name}`);
+      onDone && onDone();
+    } catch (err) {
+      toast("Couldn't delete — try again");
+    }
+  }
+  showDelete();
+
   body.replaceChildren(
     form.node,
     el("button.btn.btn-primary.btn-block.btn-lg", { text: "Save changes", style: "margin-top:4px", onclick: save }),
+    delArea,
   );
   async function save() {
     const v = form.collect();

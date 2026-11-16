@@ -6,6 +6,7 @@ import { DEMO_PLACES } from "./data.js";
 
 const LS_PLACES    = "twoup.places.v1";    // user-added places
 const LS_OVERRIDES = "twoup.place.ovr.v1"; // edits to any place (incl. demo seed)
+const LS_DELETED   = "twoup.place.del.v1"; // ids of demo/seed places hidden by delete
 const LS_PLANS     = "twoup.plans.v1";     // saved plans
 
 function read(key, fallback) {
@@ -23,7 +24,10 @@ export function uid(prefix = "x") {
 // --- Places ---
 export async function getPlaces() {
   const ov = read(LS_OVERRIDES, {});
-  return [...DEMO_PLACES, ...read(LS_PLACES, [])].map(p => ov[p.id] ? { ...p, ...ov[p.id] } : p);
+  const del = new Set(read(LS_DELETED, []));
+  return [...DEMO_PLACES, ...read(LS_PLACES, [])]
+    .filter(p => !del.has(p.id))
+    .map(p => ov[p.id] ? { ...p, ...ov[p.id] } : p);
 }
 export async function getPlace(id) {
   return (await getPlaces()).find(p => p.id === id) || null;
@@ -46,6 +50,18 @@ export async function updatePlace(id, patch) {
   ov[id] = { ...(ov[id] || {}), ...patch };
   write(LS_OVERRIDES, ov);
   return { id, ...ov[id] };
+}
+export async function deletePlace(id) {
+  // Added place: drop it outright. Demo/seed place: remember it as deleted.
+  const added = read(LS_PLACES, []);
+  const i = added.findIndex(p => p.id === id);
+  if (i >= 0) { added.splice(i, 1); write(LS_PLACES, added); }
+  else {
+    const del = read(LS_DELETED, []);
+    if (!del.includes(id)) { del.push(id); write(LS_DELETED, del); }
+  }
+  const ov = read(LS_OVERRIDES, {});
+  if (ov[id]) { delete ov[id]; write(LS_OVERRIDES, ov); }
 }
 
 // --- Plans ---

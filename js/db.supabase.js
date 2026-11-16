@@ -58,6 +58,10 @@ export async function updatePlace(id, patch) {
   if (error) throw error;
   return data;
 }
+export async function deletePlace(id) {
+  const { error } = await supabase.from("places").delete().eq("id", id);
+  if (error) throw error;
+}
 
 // --- Plans ---
 export async function getPlans() {
