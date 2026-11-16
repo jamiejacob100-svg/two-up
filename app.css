@@ -422,4 +422,13 @@ body.logged-out .tabbar { display: none; }
   border-radius: 999px; padding: 6px 14px; font-size: 13px; font-weight: 650; }
 .account-signout:active { transform: scale(.96); }
 
+/* Profile avatar button, fixed top-right */
+.profile-btn {
+  position: fixed; top: calc(12px + var(--safe-t)); right: 14px; z-index: 45;
+  width: 42px; height: 42px; border-radius: 50%; border: 2px solid var(--card);
+  background: var(--brand); color: #fff; font-weight: 800; font-size: 17px; line-height: 1;
+  display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow);
+}
+.profile-btn:active { transform: scale(.92); }
+
 .hidden { display: none !important; }
