@@ -3,13 +3,16 @@
 // Default reference point for the distance filter (Sydney CBD).
 export const CITY_CENTER = { lat: -33.8688, lng: 151.2093, label: "the CBD" };
 
+// Keys stay the same (coffee/food/view/drinks/activity/dessert) so all data,
+// filters, the day planner and the bars seed keep working — only the labels
+// and icons change. Order here sets the chip order (a date progression).
 export const CATEGORIES = {
-  coffee:   { label: "Coffee",   icon: "☕", c1: "#c69b7b", c2: "#e9c9a8" },
-  food:     { label: "Food",     icon: "🍜", c1: "#d98b6a", c2: "#f3b89a" },
-  activity: { label: "Activity", icon: "🎯", c1: "#6ea4a0", c2: "#aee0dc" },
-  view:     { label: "View",     icon: "🌅", c1: "#7d8bd4", c2: "#c3cdf6" },
-  drinks:   { label: "Drinks",   icon: "🍸", c1: "#9a6fb0", c2: "#d6b6e6" },
-  dessert:  { label: "Dessert",  icon: "🍰", c1: "#d47ba0", c2: "#f6bcd4" },
+  coffee:   { label: "Performative matcha time", icon: "🍵", c1: "#8fae6b", c2: "#cfe3ac" },
+  food:     { label: "Lil lunch",                icon: "🥪", c1: "#d98b6a", c2: "#f3b89a" },
+  view:     { label: "Fancy asf dinner",         icon: "🍽️", c1: "#7d8bd4", c2: "#c3cdf6" },
+  drinks:   { label: "Tipsy time",               icon: "🍸", c1: "#9a6fb0", c2: "#d6b6e6" },
+  activity: { label: "Jungle exploration",       icon: "🌴", c1: "#6ea4a0", c2: "#aee0dc" },
+  dessert:  { label: "Cheeky sweet treat",       icon: "🍰", c1: "#d47ba0", c2: "#f6bcd4" },
 };
 
 export const VIBES = {
