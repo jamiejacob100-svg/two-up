@@ -1,7 +1,7 @@
 // --- Reusable components: place card + detail sheet ------------------------
 
 import { el, money, stars, openSheet, toast } from "./ui.js";
-import { CATEGORIES, photoFor } from "./data.js";
+import { CATEGORIES, DAYS, dealFor, photoFor } from "./data.js";
 import { directionsUrl } from "./geo.js";
 import { addToDraft } from "./planner.js";
 import { DEMO_MODE, GOOGLE_ENABLED } from "./config.js";
@@ -16,12 +16,15 @@ function maybeLoadPhoto(img, place) {
   placePhoto(place.google_place_id).then(uri => { if (uri) img.src = uri; }).catch(() => {});
 }
 
-export function placeCard(place, onOpen) {
+export function placeCard(place, onOpen, opts = {}) {
   const cat = CATEGORIES[place.category];
   const img = el("img.place-photo", { src: imgSrc(place), alt: place.name, loading: "lazy" });
   maybeLoadPhoto(img, place);
   return el("button.place-card", { onclick: () => onOpen(place) }, [
-    img,
+    el("div.place-photo-wrap", {}, [
+      img,
+      opts.deal && el("div.deal-ribbon", { text: `🏷️ ${opts.deal}` }),
+    ]),
     el("div.place-body", {}, [
       el("div.place-name", { text: place.name }),
       el("div.place-meta", {}, [
@@ -29,6 +32,19 @@ export function placeCard(place, onOpen) {
         el("span", { text: money(place.est_cost_for_two) }),
       ]),
     ]),
+  ]);
+}
+
+// Build the "Weekly specials" block for the detail sheet, or null if none.
+function dealsSection(place) {
+  const rows = DAYS.map(d => { const t = dealFor(place, d.key); return t ? [d, t] : null; }).filter(Boolean);
+  if (!rows.length) return null;
+  return el("div", {}, [
+    el("div.section-label", { text: "🗓️ Weekly specials" }),
+    el("div.deals-list", {}, rows.map(([d, t]) => el("div.deal-row", {}, [
+      el("span.deal-day", { text: d.full }),
+      el("span.deal-text", { text: t }),
+    ]))),
   ]);
 }
 
@@ -96,6 +112,7 @@ export function openDetail(place) {
       el("span.dot"), el("span", { text: place.area || "Sydney" }),
     ]),
     info,
+    dealsSection(place),
     place.our_notes && el("div.section-label", { text: "Our notes" }),
     place.our_notes && el("div.notes-box", { text: place.our_notes }),
   ]);

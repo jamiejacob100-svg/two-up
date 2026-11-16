@@ -207,6 +207,35 @@ input[type="range"] { flex: 1; accent-color: var(--brand); height: 28px; }
 .place-body { padding: 10px 12px 12px; }
 .place-name { font-weight: 720; font-size: 15px; line-height: 1.25; }
 .place-meta { display: flex; gap: 8px; align-items: center; margin-top: 5px; font-size: 12.5px; color: var(--ink-soft); }
+
+/* --- Weekly deals: card ribbon, detail list, add-form inputs --- */
+.place-photo-wrap { position: relative; display: block; }
+.deal-ribbon {
+  position: absolute; left: 8px; bottom: 8px; right: 8px;
+  background: rgba(20, 14, 10, .82); color: #fff; backdrop-filter: blur(2px);
+  font-size: 11.5px; font-weight: 650; line-height: 1.3;
+  padding: 5px 8px; border-radius: 9px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.deals-list { display: flex; flex-direction: column; gap: 6px; margin-top: 2px; }
+.deal-row {
+  display: flex; gap: 10px; align-items: baseline;
+  background: var(--card-2); border: 1px solid var(--line);
+  border-radius: var(--r-sm); padding: 8px 12px;
+}
+.deal-day { font-weight: 720; font-size: 13px; color: var(--brand-ink); min-width: 78px; }
+.deal-text { font-size: 13.5px; color: var(--ink); }
+.deals-field { margin-top: 2px; }
+.deals-field > summary {
+  cursor: pointer; font-weight: 650; font-size: 14px; color: var(--ink-soft);
+  padding: 8px 0; list-style: none;
+}
+.deals-field > summary::-webkit-details-marker { display: none; }
+.deals-field[open] > summary { color: var(--brand-ink); }
+.deals-inputs { display: flex; flex-direction: column; gap: 8px; padding-top: 4px; }
+.deal-input-row { display: flex; align-items: center; gap: 10px; }
+.deal-input-day { min-width: 38px; font-weight: 700; font-size: 13px; color: var(--ink-soft); }
+.deal-input-row .deal-input { flex: 1; }
 .tag {
   font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
   background: var(--brand-soft); color: var(--brand-ink);

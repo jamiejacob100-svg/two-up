@@ -1,7 +1,7 @@
 // --- Places tab: list all places + add a new one --------------------------
 
 import { el, money, toast, openSheet } from "./ui.js";
-import { CATEGORIES, VIBES, SETTINGS, DEMO_SEARCH_RESULTS } from "./data.js";
+import { CATEGORIES, VIBES, SETTINGS, DAYS, DEMO_SEARCH_RESULTS } from "./data.js";
 import { getPlaces, addPlace } from "./store.js";
 import { placeCard, openDetail } from "./components.js";
 import { DEMO_MODE, GOOGLE_ENABLED } from "./config.js";
@@ -37,6 +37,15 @@ function addPlaceFlow(state) {
     const photo = el("input.input", { type: "url", placeholder: "https://… image link" });
     const notes = el("textarea.input", { placeholder: "What's good about it?" });
 
+    // Weekly specials — one optional line per day (feeds the Weekly deals filter).
+    const dealInputs = DAYS.map(d => ({ key: d.key,
+      input: el("input.input.deal-input", { placeholder: `${d.full} special (e.g. $10 burgers)` }) }));
+    const dealsField = el("details.deals-field", {}, [
+      el("summary", { text: "🏷️ Weekly specials (optional)" }),
+      el("div.deals-inputs", {}, dealInputs.map((di, i) =>
+        el("div.deal-input-row", {}, [ el("span.deal-input-day", { text: DAYS[i].label }), di.input ]))),
+    ]);
+
     const catSeg = el("div.chips", {}, Object.entries(CATEGORIES).map(([k, c]) =>
       el("button.chip" + (k === cat ? ".on" : ""), { dataset: { k }, onclick: () => {
         cat = k; catSeg.querySelectorAll(".chip").forEach(x => x.classList.toggle("on", x.dataset.k === k));
@@ -60,11 +69,14 @@ function addPlaceFlow(state) {
       el("div.field", {}, [ el("label", { text: "Opening hours (optional)" }), hours ]),
       el("div.field", {}, [ el("label", { text: "Photo link (optional)" }), photo ]),
       el("div.field", {}, [ el("label", { text: "Our notes" }), notes ]),
+      el("div.field", {}, [ el("label", { text: "Weekly deals" }), dealsField ]),
       el("button.btn.btn-primary.btn-block.btn-lg", { text: "Save place", onclick: save }),
     );
 
     async function save() {
       if (!name.value.trim()) { toast("Give it a name first"); return; }
+      const deals = {};
+      dealInputs.forEach(di => { const v = di.input.value.trim(); if (v) deals[di.key] = v; });
       await addPlace({
         google_place_id: "", name: name.value.trim(), category: cat,
         area: area.value.trim() || "Sydney",
@@ -73,6 +85,7 @@ function addPlaceFlow(state) {
         our_notes: notes.value.trim(),
         photo_url: photo.value.trim() || null,
         hours: hours.value.trim() || null,
+        deals: Object.keys(deals).length ? deals : undefined,
       });
       close();
       toast(`Added ${name.value.trim()} ♡`);

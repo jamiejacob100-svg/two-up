@@ -1,7 +1,7 @@
 // --- Pick tab: constraints + browse grid + narrowing ----------------------
 
 import { el, money, toast, budgetControl, distanceControl } from "./ui.js";
-import { CATEGORIES, CUISINES, CUISINE_CATS, cuisineOf, VIBES, SETTINGS, TIME_SLOTS, CITY_CENTER, photoFor } from "./data.js";
+import { CATEGORIES, CUISINES, CUISINE_CATS, cuisineOf, DAYS, dealFor, VIBES, SETTINGS, TIME_SLOTS, CITY_CENTER, photoFor } from "./data.js";
 import { getPlaces, getSavedPlaces, removeSaved } from "./store.js";
 import { placeCard, openDetail } from "./components.js";
 import { addToDraft } from "./planner.js";
@@ -72,6 +72,15 @@ export async function renderPick(root, state) {
   const vibeChips = el("div.chips", {}, Object.entries(VIBES).map(([k, v]) =>
     chip(v.icon, v.label, f.vibes.has(k), () => toggleSet(f.vibes, k, applyFilters))));
 
+  // --- Weekly deals: day-of-week sub-filter ---
+  const dayChips = el("div.chips", {}, DAYS.map(d =>
+    chip("", d.label, f.days.has(d.key), () => toggleSet(f.days, d.key, applyFilters))));
+  const dealsWrap = el("div.cuisine-sub.deals-sub", {}, [
+    el("div.panel-label.cuisine-label", { text: "📅 Which day?" }),
+    el("p.page-sub", { text: "Pick a day to see places running a food special then.", style: "margin:-2px 0 8px" }),
+    dayChips,
+  ]);
+
   const setSeg2 = el("div.seg", {}, Object.entries(SETTINGS).map(([k, s]) =>
     el("button" + (f.setting === k ? ".on" : ""), { text: `${s.icon} ${s.label}`, dataset: { k }, onclick: () => setSeg(setSeg2, "setting", k) })));
 
@@ -91,6 +100,7 @@ export async function renderPick(root, state) {
     cuisineWrap,
     el("div.panel-label", { text: "Vibe", style: "margin-top:16px" }), vibeChips,
     el("div.panel-label", { text: "Setting", style: "margin-top:16px" }), setSeg2,
+    el("div.panel-label", { text: "Weekly deals", style: "margin-top:16px" }), dealsWrap,
   ]);
 
   // --- Saved-for-later strip (from swipe right) ---
@@ -139,6 +149,8 @@ export async function renderPick(root, state) {
       if (f.cats.size && !f.cats.has(p.category)) return false;
       // Cuisine only narrows the food categories; everything else passes through.
       if (f.cuisines.size && CUISINE_CATS.includes(p.category) && !f.cuisines.has(cuisineOf(p))) return false;
+      // Weekly deals: keep only places with a food special on a selected day.
+      if (f.days.size && ![...f.days].some(dk => dealFor(p, dk))) return false;
       if (f.vibes.size && !(p.vibe || []).some(v => f.vibes.has(v))) return false;
       if (f.setting && f.setting !== "either" && p.setting !== "either" && p.setting !== f.setting) return false;
       return true;
@@ -150,11 +162,20 @@ export async function renderPick(root, state) {
     else openDetail(place);
   }
 
+  // When filtering by day(s), surface the matching special on the card.
+  function dealBadge(p) {
+    if (!f.days.size) return null;
+    for (const d of DAYS) {
+      if (f.days.has(d.key)) { const t = dealFor(p, d.key); if (t) return `${d.label} · ${t}`; }
+    }
+    return null;
+  }
+
   function applyFilters() {
     syncCuisine();
     const list = filtered();
     countLabel.textContent = `${list.length} place${list.length === 1 ? "" : "s"} match`;
-    grid.replaceChildren(...list.map(p => placeCard(p, openDetail)));
+    grid.replaceChildren(...list.map(p => placeCard(p, openDetail, { deal: dealBadge(p) })));
     if (!list.length) grid.replaceChildren(el("p.page-sub", { text: "Nothing matches — try a bigger budget or fewer filters." }));
   }
 
@@ -165,7 +186,7 @@ export async function renderPick(root, state) {
 
 function chip(icon, label, on, onClick) {
   return el("button.chip" + (on ? ".on" : ""), { onclick(e) { e.currentTarget.classList.toggle("on"); onClick(); } }, [
-    el("span.ico", { text: icon }), label,
+    icon ? el("span.ico", { text: icon }) : null, label,
   ]);
 }
 function toggleSet(set, key, after) { set.has(key) ? set.delete(key) : set.add(key); after(); }

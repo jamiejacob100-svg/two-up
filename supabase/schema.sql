@@ -23,6 +23,7 @@ create table if not exists public.places (
   our_rating        numeric,
   photo_url         text,                            -- manual photo link (no Google)
   hours             text,                            -- manual opening hours (no Google)
+  deals             jsonb,                            -- weekly specials: {mon:"...", tue:"..."}
   added_by          uuid references auth.users(id),
   created_at        timestamptz default now()
 );
@@ -30,6 +31,7 @@ create table if not exists public.places (
 -- If the table already existed from an earlier run, add the newer columns.
 alter table public.places add column if not exists photo_url text;
 alter table public.places add column if not exists hours text;
+alter table public.places add column if not exists deals jsonb;
 
 -- --- Saved day plans ---
 create table if not exists public.plans (

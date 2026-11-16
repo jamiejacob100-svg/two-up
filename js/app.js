@@ -12,7 +12,8 @@ const view = document.getElementById("view");
 // Shared, in-memory UI state (filters persist while the app is open).
 const state = {
   filters: { budget: 150, distanceKm: 25, center: null, nearMe: false,
-             time: null, cats: new Set(), cuisines: new Set(), vibes: new Set(), setting: null },
+             time: null, cats: new Set(), cuisines: new Set(), days: new Set(),
+             vibes: new Set(), setting: null },
   tpl: "full", budget: 150, vibe: null, setting: null, workingPlan: null,
   rerender: () => route(),
 };

@@ -62,6 +62,31 @@ export const TIME_SLOTS = {
   full:    { label: "Full day",   hours: 9 },
 };
 
+// Days of the week — the sub-filter under "Weekly deals". A place's `deals`
+// object maps these keys to the special it runs that day, e.g.
+//   deals: { mon: "$12 burger + beer", wed: "2-for-1 wings" }
+export const DAYS = [
+  { key: "mon", label: "Mon", full: "Monday" },
+  { key: "tue", label: "Tue", full: "Tuesday" },
+  { key: "wed", label: "Wed", full: "Wednesday" },
+  { key: "thu", label: "Thu", full: "Thursday" },
+  { key: "fri", label: "Fri", full: "Friday" },
+  { key: "sat", label: "Sat", full: "Saturday" },
+  { key: "sun", label: "Sun", full: "Sunday" },
+];
+
+// The special a place runs on a given day, or null. Tolerant of a missing or
+// malformed `deals` field (older rows, places added before the column existed).
+export function dealFor(place, dayKey) {
+  const d = place && place.deals;
+  if (!d || typeof d !== "object") return null;
+  const v = d[dayKey];
+  return v && String(v).trim() ? String(v).trim() : null;
+}
+export function hasAnyDeal(place) {
+  return DAYS.some(d => dealFor(place, d.key));
+}
+
 // A small, hand-made set of Sydney-flavoured sample places for demo mode.
 // Images are generated locally (see photoFor) so the demo works offline.
 export const DEMO_PLACES = [
@@ -81,15 +106,18 @@ export const DEMO_PLACES = [
   { id: "d4",  google_place_id: "", name: "Spice Alley", category: "food",
     area: "Chippendale", est_cost_for_two: 36, vibe: ["social","adventurous"], setting: "outdoor",
     lat: -33.8885, lng: 151.1986, our_rating: 4.2,
-    our_notes: "Hawker-style, lantern-lit laneway. Cash-free, order at stalls." },
+    our_notes: "Hawker-style, lantern-lit laneway. Cash-free, order at stalls.",
+    deals: { thu: "Dumpling night — $8 plates", sun: "Laksa Sunday $14" } },
   { id: "d5",  google_place_id: "", name: "Chica Bonita", category: "food",
     area: "Manly", est_cost_for_two: 70, vibe: ["social"], setting: "indoor",
     lat: -33.7968, lng: 151.2870, our_rating: 4.1,
-    our_notes: "Tacos + margs near the wharf. Good after a ferry." },
+    our_notes: "Tacos + margs near the wharf. Good after a ferry.",
+    deals: { tue: "Taco Tuesday — $3 tacos all night", fri: "Margarita happy hour til 6" } },
   { id: "d6",  google_place_id: "", name: "Mary's", category: "food",
     area: "Newtown", est_cost_for_two: 52, vibe: ["social","adventurous"], setting: "indoor",
     lat: -33.8976, lng: 151.1793, our_rating: 4.3,
-    our_notes: "Loud, dark, best burger. No bookings — go early." },
+    our_notes: "Loud, dark, best burger. No bookings — go early.",
+    deals: { mon: "$12 cheeseburger + schooner", wed: "2-for-1 fried chicken" } },
 
   { id: "d7",  google_place_id: "", name: "Royal Botanic Garden", category: "activity",
     area: "CBD", est_cost_for_two: 0, vibe: ["chill"], setting: "outdoor",
@@ -132,12 +160,14 @@ export const DEMO_PLACES = [
   { id: "d16", google_place_id: "", name: "Opera Bar", category: "drinks",
     area: "CBD", est_cost_for_two: 55, vibe: ["social"], setting: "outdoor",
     lat: -33.8570, lng: 151.2150, our_rating: 4.2,
-    our_notes: "Pricey but the view does the work. Sunset spritz." },
+    our_notes: "Pricey but the view does the work. Sunset spritz.",
+    deals: { fri: "$15 spritz + oysters, 4–6pm", sat: "Live music, no cover" } },
 
   { id: "d17", google_place_id: "", name: "Gelato Messina", category: "dessert",
     area: "Darlinghurst", est_cost_for_two: 18, vibe: ["chill","social"], setting: "either",
     lat: -33.8800, lng: 151.2200, our_rating: 4.7,
-    our_notes: "The classic. Specials board is always worth a look." },
+    our_notes: "The classic. Specials board is always worth a look.",
+    deals: { mon: "Buy-one-get-one scoops", thu: "New special flavour drop" } },
   { id: "d18", google_place_id: "", name: "Koi Dessert Bar", category: "dessert",
     area: "Chippendale", est_cost_for_two: 34, vibe: ["social"], setting: "indoor",
     lat: -33.8880, lng: 151.1990, our_rating: 4.3,

@@ -41,6 +41,7 @@ export async function addPlace(place) {
   // works before the photo_url/hours columns have been added (SETUP step).
   if (place.photo_url) row.photo_url = place.photo_url;
   if (place.hours) row.hours = place.hours;
+  if (place.deals && Object.keys(place.deals).length) row.deals = place.deals;
   const { data, error } = await supabase.from("places").insert(row).select().single();
   if (error) throw error;
   return data;
