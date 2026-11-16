@@ -130,6 +130,9 @@ export function hasAnyDeal(place) {
   return DAYS.some(d => dealFor(place, d.key));
 }
 
+// Shared photo used for the bars (Tipsy time). Hosted on the live site.
+export const BAR_PHOTO = "https://jamiejacob100-svg.github.io/two-up/images/bars.jpg";
+
 // A small, hand-made set of Sydney-flavoured sample places for demo mode.
 // Images are generated locally (see photoFor) so the demo works offline.
 export const DEMO_PLACES = [
@@ -206,14 +209,14 @@ export const DEMO_PLACES = [
 
   { id: "d14", google_place_id: "", name: "Maybe Sammy", category: "drinks",
     area: "The Rocks", est_cost_for_two: 60, vibe: ["social"], setting: "indoor",
-    lat: -33.8599, lng: 151.2089, our_rating: 4.6,
+    lat: -33.8599, lng: 151.2089, our_rating: 4.6, photo_url: BAR_PHOTO,
     our_notes: "World-ranked cocktail bar. Dress up a little, book ahead." },
   { id: "d15", google_place_id: "", name: "The Baxter Inn", category: "drinks",
     area: "CBD", est_cost_for_two: 50, vibe: ["social","adventurous"], setting: "indoor",
-    lat: -33.8694, lng: 151.2065, our_rating: 4.4,
+    lat: -33.8694, lng: 151.2065, our_rating: 4.4, photo_url: BAR_PHOTO,
     our_notes: "Hidden down a laneway, wall of whisky. No sign — just go in." },
   { id: "d16", google_place_id: "", name: "Opera Bar", category: "drinks",
-    area: "CBD", est_cost_for_two: 55, vibe: ["social"], setting: "outdoor",
+    area: "CBD", est_cost_for_two: 55, vibe: ["social"], setting: "outdoor", photo_url: BAR_PHOTO,
     lat: -33.8570, lng: 151.2150, our_rating: 4.2,
     our_notes: "Pricey but the view does the work. Sunset spritz.",
     deals: { fri: "$15 spritz + oysters, 4–6pm", sat: "Live music, no cover" } },
