@@ -76,10 +76,23 @@ export async function renderPick(root, state) {
   // --- Weekly deals: day-of-week sub-filter ---
   const dayChips = el("div.chips", {}, DAYS.map(d =>
     chip("", d.label, f.days.has(d.key), () => toggleSet(f.days, d.key, applyFilters))));
+  // Drinks / Restaurants type toggle (single-select; tap again for both).
+  const RESTAURANT_CATS = ["food", "view"];
+  const typeSeg = el("div.seg", { style: "margin-top:12px" }, [
+    el("button" + (f.dealType === "drinks" ? ".on" : ""), { dataset: { k: "drinks" }, text: "🍸 Drinks", onclick: () => setDealType("drinks") }),
+    el("button" + (f.dealType === "rest" ? ".on" : ""), { dataset: { k: "rest" }, text: "🍽️ Restaurants", onclick: () => setDealType("rest") }),
+  ]);
+  function setDealType(v) {
+    f.dealType = f.dealType === v ? null : v;
+    typeSeg.querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.k === f.dealType));
+    applyFilters();
+  }
+
   const dealsWrap = el("div.cuisine-sub.deals-sub", {}, [
     el("div.panel-label.cuisine-label", { text: "📅 Which day?" }),
-    el("p.page-sub", { text: "Pick a day to see places running a food special then.", style: "margin:-2px 0 8px" }),
+    el("p.page-sub", { text: "Pick a day to see places running a special then.", style: "margin:-2px 0 8px" }),
     dayChips,
+    typeSeg,
   ]);
 
   const setSeg2 = el("div.seg", {}, Object.entries(SETTINGS).map(([k, s]) =>
@@ -150,8 +163,11 @@ export async function renderPick(root, state) {
       if (f.cats.size && !f.cats.has(p.category)) return false;
       // Cuisine only narrows the food categories; everything else passes through.
       if (f.cuisines.size && CUISINE_CATS.includes(p.category) && !f.cuisines.has(cuisineOf(p))) return false;
-      // Weekly deals: keep only places with a food special on a selected day.
+      // Weekly deals: keep only places with a special on a selected day.
       if (f.days.size && ![...f.days].some(dk => dealFor(p, dk))) return false;
+      // Drinks / Restaurants toggle (under Weekly deals).
+      if (f.dealType === "drinks" && p.category !== "drinks") return false;
+      if (f.dealType === "rest" && !RESTAURANT_CATS.includes(p.category)) return false;
       if (f.vibes.size && !(p.vibe || []).some(v => f.vibes.has(v))) return false;
       if (f.setting && f.setting !== "either" && p.setting !== "either" && p.setting !== f.setting) return false;
       return true;
