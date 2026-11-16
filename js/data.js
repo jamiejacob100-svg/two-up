@@ -13,6 +13,7 @@ export const CATEGORIES = {
   drinks:   { label: "Tipsy time",               icon: "🍸", c1: "#9a6fb0", c2: "#d6b6e6" },
   activity: { label: "Jungle exploration",       icon: "🌴", c1: "#6ea4a0", c2: "#aee0dc" },
   dessert:  { label: "Cheeky sweet treat",       icon: "🍰", c1: "#d47ba0", c2: "#f6bcd4" },
+  sidequest:{ label: "Side quests",              icon: "🗺️", c1: "#c9a15a", c2: "#ecd49f" },
 };
 
 export const VIBES = {
