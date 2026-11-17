@@ -15,6 +15,7 @@ export const CATEGORIES = {
   dessert:  { label: "Cheeky sweet treat",       icon: "🍰", c1: "#d47ba0", c2: "#f6bcd4" },
   sidequest:{ label: "Side quests",              icon: "🗺️", c1: "#c9a15a", c2: "#ecd49f" },
   bedrot:   { label: "Bedrot time",              icon: "🛏️", c1: "#667089", c2: "#c2c9dc" },
+  beach:    { label: "Suns out buns out",        icon: "🏖️", c1: "#2ca6bf", c2: "#ffe0a8" },
 };
 
 // Cuisine sub-filter — only shown when a food category (lunch/dinner) is picked.
