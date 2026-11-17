@@ -1,7 +1,7 @@
 // --- Pick tab: constraints + browse grid + narrowing ----------------------
 
 import { el, money, toast, budgetControl, distanceControl } from "./ui.js";
-import { CATEGORIES, CUISINES, CUISINE_CATS, cuisineOf, ZONES, ZONE_CATS, zoneOf, TREATS, TREAT_CATS, treatOf, DAYS, dealFor, VIBES, SETTINGS, TIME_SLOTS, CITY_CENTER, photoFor } from "./data.js";
+import { CATEGORIES, CUISINES, CUISINE_CATS, cuisineOf, ZONES, ZONE_CATS, zoneOf, TREATS, TREAT_CATS, treatOf, BEDROT_IDEAS, BEDROT_CATS, bedOf, DAYS, dealFor, VIBES, SETTINGS, TIME_SLOTS, CITY_CENTER, photoFor } from "./data.js";
 import { getPlaces, getSavedPlaces, removeSaved } from "./store.js";
 import { placeCard, openDetail } from "./components.js";
 import { editPlaceFlow } from "./places.js";
@@ -102,6 +102,22 @@ export async function renderPick(root, state) {
     }
   }
 
+  // --- Stay-in idea sub-filter (only visible when Bedrot time picked) ---
+  const bedChips = el("div.chips", {}, Object.entries(BEDROT_IDEAS).map(([k, b]) =>
+    chip(b.icon, b.label, f.beds.has(k), () => toggleSet(f.beds, k, applyFilters))));
+  const bedWrap = el("div.cuisine-sub.bed-sub", { hidden: true }, [
+    el("div.panel-label.cuisine-label", { text: "🛏️ Stay-in idea" }),
+    bedChips,
+  ]);
+  function syncBed() {
+    const show = BEDROT_CATS.some(k => f.cats.has(k));
+    bedWrap.hidden = !show;
+    if (!show && f.beds.size) {
+      f.beds.clear();
+      bedChips.querySelectorAll("button").forEach(b => b.classList.remove("on"));
+    }
+  }
+
   const vibeChips = el("div.chips", {}, Object.entries(VIBES).map(([k, v]) =>
     chip(v.icon, v.label, f.vibes.has(k), () => toggleSet(f.vibes, k, applyFilters))));
 
@@ -146,6 +162,7 @@ export async function renderPick(root, state) {
     cuisineWrap,
     zoneWrap,
     treatWrap,
+    bedWrap,
     el("div.panel-label", { text: "Vibe", style: "margin-top:16px" }), vibeChips,
     el("div.panel-label", { text: "Setting", style: "margin-top:16px" }), setSeg2,
     el("div.panel-label", { text: "Weekly deals", style: "margin-top:16px" }), dealsWrap,
@@ -201,6 +218,8 @@ export async function renderPick(root, state) {
       if (f.zones.size && ZONE_CATS.includes(p.category) && !f.zones.has(zoneOf(p))) return false;
       // Treat brand only narrows Cheeky sweet treat.
       if (f.treats.size && TREAT_CATS.includes(p.category) && !f.treats.has(treatOf(p))) return false;
+      // Stay-in idea only narrows Bedrot time.
+      if (f.beds.size && BEDROT_CATS.includes(p.category) && !f.beds.has(bedOf(p))) return false;
       // Weekly deals: keep only places with a special on a selected day.
       if (f.days.size && ![...f.days].some(dk => dealFor(p, dk))) return false;
       // Drinks / Restaurants toggle (under Weekly deals).
@@ -230,6 +249,7 @@ export async function renderPick(root, state) {
     syncCuisine();
     syncZone();
     syncTreat();
+    syncBed();
     const list = filtered();
     countLabel.textContent = `${list.length} place${list.length === 1 ? "" : "s"} match`;
     const openP = (pl) => openDetail(pl, { onEdit: (x) => editPlaceFlow(x, () => state.rerender()) });

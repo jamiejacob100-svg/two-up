@@ -86,6 +86,39 @@ export function treatOf(place) {
   return null;
 }
 
+// Stay-in idea sub-filter — one chip per idea, only under Bedrot time.
+// Each entry's `match` is the exact place name it maps to.
+export const BEDROT_IDEAS = {
+  movie:      { label: "Movie Marathon",      icon: "🍿", match: "Movie Marathon Night" },
+  pizza:      { label: "Homemade Pizza",      icon: "🍕", match: "Homemade Pizza Night" },
+  boardgames: { label: "Fort & Board Games",  icon: "🎲", match: "Blanket Fort & Board Games" },
+  takeaway:   { label: "Takeaway & Binge",    icon: "🥡", match: "Takeaway & Binge Night" },
+  baking:     { label: "Baking Together",     icon: "🧁", match: "Baking Together" },
+  spa:        { label: "Spa Night In",        icon: "🧖", match: "Spa Night In" },
+  puzzle:     { label: "Puzzle & Wine",       icon: "🧩", match: "Puzzle & Wine Night" },
+  dinner:     { label: "Candlelit Dinner",    icon: "🕯️", match: "Candlelit Dinner In" },
+  coop:       { label: "Co-op Games",         icon: "🎮", match: "Co-op Game Night" },
+  breakfast:  { label: "Breakfast in Bed",    icon: "🥐", match: "Breakfast in Bed" },
+  camping:    { label: "Living Room Camping", icon: "🏕️", match: "Living Room Camping" },
+  paint:      { label: "Paint & Sip",         icon: "🎨", match: "Paint & Sip at Home" },
+  lego:       { label: "Lego Night",          icon: "🧱", match: "Lego Night" },
+};
+
+// The categories that get the stay-in idea sub-filter (just Bedrot time).
+export const BEDROT_CATS = ["bedrot"];
+
+// Which stay-in idea a place is, or null. An explicit `bedrot` tag wins,
+// otherwise match on the exact name.
+export function bedOf(place) {
+  if (!place) return null;
+  if (place.bedrot && BEDROT_IDEAS[place.bedrot]) return place.bedrot;
+  const name = (place.name || "").trim().toLowerCase();
+  for (const [k, v] of Object.entries(BEDROT_IDEAS)) {
+    if (v.match && v.match.toLowerCase() === name) return k;
+  }
+  return null;
+}
+
 export const VIBES = {
   chill:       { label: "Chill",       icon: "🌿" },
   social:      { label: "Social",      icon: "🥂" },
