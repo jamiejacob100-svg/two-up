@@ -41,6 +41,7 @@ export function hoursFor(cat) {
     activity: { open: 9, close: 17 }, view: { open: 0, close: 24 },
     drinks: { open: 16, close: 25 }, dessert: { open: 12, close: 23 },
     sidequest: { open: 0, close: 24 },
+    bedrot: { open: 0, close: 24 },
   };
   return map[cat] || { open: 9, close: 18 };
 }
