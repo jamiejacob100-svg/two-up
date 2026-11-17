@@ -236,14 +236,57 @@ export const DEMO_PLACES = [
     area: "Surry Hills", est_cost_for_two: 22, vibe: ["chill","social"], setting: "indoor",
     lat: -33.8846, lng: 151.2110, our_rating: 4.3, treat: "yochi",
     our_notes: "Self-serve froyo & açaí, weigh-and-pay. 435 Crown St." },
+
+  // Bedrot time — cozy stay-in date ideas (no location, so they ignore the distance slider).
+  { id: "d24", google_place_id: "", name: "Movie Marathon Night", category: "bedrot",
+    area: "At home", est_cost_for_two: 20, vibe: ["chill","social"], setting: "indoor", our_rating: 4.6,
+    our_notes: "Pick a trilogy, dim the lights, blankets + popcorn. Loser picks the snacks." },
+  { id: "d25", google_place_id: "", name: "Homemade Pizza Night", category: "bedrot",
+    area: "At home", est_cost_for_two: 30, vibe: ["chill","social"], setting: "indoor", our_rating: 4.5,
+    our_notes: "Shop-bought dough, race to build the best one. Pineapple is a dealbreaker." },
+  { id: "d26", google_place_id: "", name: "Blanket Fort & Board Games", category: "bedrot",
+    area: "At home", est_cost_for_two: 0, vibe: ["chill","social"], setting: "indoor", our_rating: 4.7,
+    our_notes: "Build the fort, string up the fairy lights, best of three at Scrabble." },
+  { id: "d27", google_place_id: "", name: "Takeaway & Binge Night", category: "bedrot",
+    area: "At home", est_cost_for_two: 45, vibe: ["chill"], setting: "indoor", our_rating: 4.4,
+    our_notes: "Order the usual, start a new series, promise just one episode (lie)." },
+  { id: "d28", google_place_id: "", name: "Baking Together", category: "bedrot",
+    area: "At home", est_cost_for_two: 25, vibe: ["chill","social"], setting: "indoor", our_rating: 4.5,
+    our_notes: "Cookies or brownies from scratch. Whoever licks the bowl does the dishes." },
+  { id: "d29", google_place_id: "", name: "Spa Night In", category: "bedrot",
+    area: "At home", est_cost_for_two: 35, vibe: ["chill"], setting: "indoor", our_rating: 4.6,
+    our_notes: "Face masks, candles, a long bath and terrible reality TV. Full reset." },
+  { id: "d30", google_place_id: "", name: "Puzzle & Wine Night", category: "bedrot",
+    area: "At home", est_cost_for_two: 30, vibe: ["chill"], setting: "indoor", our_rating: 4.3,
+    our_notes: "1000-piece puzzle, a bottle of red, a slow playlist. Phones in the other room." },
+  { id: "d31", google_place_id: "", name: "Candlelit Dinner In", category: "bedrot",
+    area: "At home", est_cost_for_two: 50, vibe: ["chill","social"], setting: "indoor", our_rating: 4.7,
+    our_notes: "Cook a three-course meal together. Fancy plates, no rush." },
+  { id: "d32", google_place_id: "", name: "Co-op Game Night", category: "bedrot",
+    area: "At home", est_cost_for_two: 0, vibe: ["social","adventurous"], setting: "indoor", our_rating: 4.5,
+    our_notes: "Two-player co-op — Overcooked or It Takes Two. Really tests the relationship." },
+  { id: "d33", google_place_id: "", name: "Breakfast in Bed", category: "bedrot",
+    area: "At home", est_cost_for_two: 20, vibe: ["chill"], setting: "indoor", our_rating: 4.6,
+    our_notes: "Make brunch together, take it back to bed, nowhere to be all morning." },
+  { id: "d34", google_place_id: "", name: "Living Room Camping", category: "bedrot",
+    area: "At home", est_cost_for_two: 15, vibe: ["chill","social"], setting: "indoor", our_rating: 4.4,
+    our_notes: "Mattress on the floor, fairy lights, s'mores in the microwave, a scary movie." },
+  { id: "d35", google_place_id: "", name: "Paint & Sip at Home", category: "bedrot",
+    area: "At home", est_cost_for_two: 40, vibe: ["chill","social"], setting: "indoor", our_rating: 4.3,
+    our_notes: "Two canvases, a YouTube tutorial, a glass of wine. Swap and critique at the end." },
+  { id: "d36", google_place_id: "", name: "Lego Night", category: "bedrot",
+    area: "At home", est_cost_for_two: 60, vibe: ["chill","social"], setting: "indoor", our_rating: 4.6,
+    our_notes: "One big set, split the bags, build it together. Snacks on standby, no stepping on pieces." },
 ];
 
 // Generate a soft gradient placeholder image as a data-URI SVG.
 // Used in demo mode and as a fallback when a live photo isn't available.
 export function photoFor(place) {
   const cat = CATEGORIES[place.category] || CATEGORIES.activity;
-  const initials = (place.name || "?")
-    .split(/\s+/).slice(0, 2).map(w => w[0]).join("").toUpperCase();
+  const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const initials = esc((place.name || "?")
+    .split(/\s+/).slice(0, 2).map(w => w[0]).join("").toUpperCase());
+  const icon = esc(cat.icon);
   const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" width="400" height="300">
       <defs>
@@ -254,7 +297,7 @@ export function photoFor(place) {
       </defs>
       <rect width="400" height="300" fill="url(#g)"/>
       <text x="26" y="270" font-family="system-ui,sans-serif" font-size="150"
-            fill="rgba(255,255,255,.35)" font-weight="800">${cat.icon}</text>
+            fill="rgba(255,255,255,.35)" font-weight="800">${icon}</text>
       <text x="200" y="165" text-anchor="middle" font-family="system-ui,sans-serif"
             font-size="86" fill="rgba(255,255,255,.9)" font-weight="800"
             letter-spacing="2">${initials}</text>
