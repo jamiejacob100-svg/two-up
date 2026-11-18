@@ -167,8 +167,18 @@ async function boot() {
 
 // --- Service worker ---
 if ("serviceWorker" in navigator) {
+  // Only reload on an UPDATE (there was already a controller), not on first install.
+  const hadController = !!navigator.serviceWorker.controller;
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (refreshing || !hadController) return;
+    refreshing = true;
+    location.reload();   // new deploy took over — apply it immediately
+  });
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("sw.js").catch(e => console.warn("SW failed:", e));
+    navigator.serviceWorker.register("sw.js")
+      .then((reg) => { try { reg.update(); } catch {} })
+      .catch(e => console.warn("SW failed:", e));
   });
 }
 
