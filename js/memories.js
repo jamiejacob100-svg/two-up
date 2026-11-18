@@ -5,23 +5,46 @@ import { el, clear, openSheet, toast, pageHeader, emptyState } from "./ui.js";
 import { CATEGORIES } from "./data.js";
 import { getPlaces, getMemories, addMemory } from "./store.js";
 
-// --- Leaflet (loaded from CDN on first visit; SW leaves cross-origin alone) ---
-let leafletPromise = null;
-function loadLeaflet() {
-  if (window.L) return Promise.resolve(window.L);
-  if (leafletPromise) return leafletPromise;
-  leafletPromise = new Promise((resolve, reject) => {
+// --- MapLibre GL (loaded from CDN on first visit; SW leaves cross-origin alone) ---
+let mlPromise = null;
+function loadMapLibre() {
+  if (window.maplibregl) return Promise.resolve(window.maplibregl);
+  if (mlPromise) return mlPromise;
+  mlPromise = new Promise((resolve, reject) => {
     const css = document.createElement("link");
     css.rel = "stylesheet";
-    css.href = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css";
+    css.href = "https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.min.css";
     document.head.appendChild(css);
     const js = document.createElement("script");
-    js.src = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js";
-    js.onload = () => resolve(window.L);
+    js.src = "https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.min.js";
+    js.onload = () => resolve(window.maplibregl);
     js.onerror = () => reject(new Error("Could not load the map library (no connection?)"));
     document.head.appendChild(js);
   });
-  return leafletPromise;
+  return mlPromise;
+}
+
+// Poster palette — cream land, soft-blue water, navy streets, salmon parks.
+const POSTER = {
+  LAND: "#f5e1d1", WATER: "#88abce", ROAD: "#2a3560", ROAD2: "#3a477a",
+  PARK: "#f2b89e", BUILDING: "#ecd6c5", BEACH: "#f6e7cf",
+};
+function recolorPoster(map) {
+  for (const L of (map.getStyle().layers || [])) {
+    const id = L.id.toLowerCase(), t = L.type;
+    try {
+      if (t === "background") map.setPaintProperty(L.id, "background-color", POSTER.LAND);
+      else if (t === "fill" && /(water|ocean|sea|river|lake|bay|reservoir)/.test(id)) map.setPaintProperty(L.id, "fill-color", POSTER.WATER);
+      else if (t === "line" && /(water|river|stream|canal)/.test(id)) map.setPaintProperty(L.id, "line-color", POSTER.WATER);
+      else if (t === "fill" && /(sand|beach)/.test(id)) map.setPaintProperty(L.id, "fill-color", POSTER.BEACH);
+      else if (t === "fill" && /(park|wood|forest|grass|green|golf|pitch|cemetery|scrub|meadow|nature)/.test(id)) map.setPaintProperty(L.id, "fill-color", POSTER.PARK);
+      else if (t === "fill" && /building/.test(id)) map.setPaintProperty(L.id, "fill-color", POSTER.BUILDING);
+      else if (t === "fill" && /(landuse|landcover|earth|land|residential|industrial)/.test(id)) map.setPaintProperty(L.id, "fill-color", POSTER.LAND);
+      else if (t === "line" && /(motorway|trunk|primary)/.test(id)) map.setPaintProperty(L.id, "line-color", POSTER.ROAD);
+      else if (t === "line" && /(road|street|highway|secondary|tertiary|bridge|tunnel|transport|rail|path|link)/.test(id)) map.setPaintProperty(L.id, "line-color", POSTER.ROAD2);
+      else if (t === "symbol") map.setLayoutProperty(L.id, "visibility", "none"); // hide labels for the poster look
+    } catch (e) { /* layer may not accept this property */ }
+  }
 }
 
 // Shrink a captured photo to a data URI so it stores comfortably in the DB.
@@ -133,10 +156,10 @@ export async function renderMemories(root, state) {
   ]);
   root.append(envelope);
 
-  let L, places = [], memories = [];
+  let maplibregl, places, memories;
   try {
-    [L, places, memories] = await Promise.all([
-      loadLeaflet(),
+    [maplibregl, places, memories] = await Promise.all([
+      loadMapLibre(),
       getPlaces().catch(() => []),
       getMemories().catch(() => []),
     ]);
@@ -147,33 +170,48 @@ export async function renderMemories(root, state) {
 
   const pinned = places.filter(p => p.lat != null && p.lng != null);
 
-  const map = L.map(mapEl, { zoomControl: true, attributionControl: true })
-    .setView([-33.87, 151.21], 11);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19, attribution: "© OpenStreetMap",
-  }).addTo(map);
-
-  const pts = [];
-  for (const p of pinned) {
-    const n = memories.filter(m => sameePlace(m, p)).length;
-    const marker = L.marker([p.lat, p.lng]).addTo(map);
-    marker.bindTooltip(`${CATEGORIES[p.category]?.icon || "📍"} ${p.name}${n ? ` · 📸 ${n}` : ""}`);
-    marker.on("click", () => openPlaceMemories(p));
-    pts.push([p.lat, p.lng]);
-  }
-
-  // The view is built detached then swapped in, so size the map after it lands.
+  // Build the map once the view is swapped into the DOM (so it has a size).
   setTimeout(() => {
-    map.invalidateSize();
-    if (pts.length) {
-      const lats = pts.map(p => p[0]), lngs = pts.map(p => p[1]);
-      const spanLat = Math.max(...lats) - Math.min(...lats);
-      const spanLng = Math.max(...lngs) - Math.min(...lngs);
-      // A far-flung outlier (e.g. an outback trip) would zoom the whole map out,
-      // hiding the Sydney cluster — so focus on Sydney when the spread is huge.
-      if (spanLat > 1.5 || spanLng > 1.5) map.setView([-33.87, 151.21], 11);
-      else map.fitBounds(pts, { padding: [36, 36], maxZoom: 14 });
+    if (!mapEl.isConnected) return;
+    let map;
+    try {
+      map = new maplibregl.Map({
+        container: mapEl,
+        style: "https://tiles.openfreemap.org/styles/positron",
+        center: [151.14, -33.87], zoom: 10,
+        attributionControl: { compact: true, customAttribution: "© OpenFreeMap · © OpenStreetMap" },
+      });
+    } catch (e) {
+      mapEl.append(emptyState("🗺️", "Map couldn't start", e.message));
+      return;
     }
-  }, 60);
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-left");
 
+    map.on("styledata", () => { if (map.isStyleLoaded()) recolorPoster(map); });
+    map.on("load", () => {
+      recolorPoster(map);
+      for (const p of pinned) {
+        const n = memories.filter(m => sameePlace(m, p)).length;
+        const marker = new maplibregl.Marker({ color: "#e0557f" }).setLngLat([p.lng, p.lat]).addTo(map);
+        const elm = marker.getElement();
+        elm.style.cursor = "pointer";
+        elm.title = `${CATEGORIES[p.category]?.icon || "📍"} ${p.name}${n ? ` · 📸 ${n}` : ""}`;
+        elm.addEventListener("click", (ev) => { ev.stopPropagation(); openPlaceMemories(p); });
+      }
+      if (pinned.length) {
+        const lats = pinned.map(p => p.lat), lngs = pinned.map(p => p.lng);
+        const spanLat = Math.max(...lats) - Math.min(...lats);
+        const spanLng = Math.max(...lngs) - Math.min(...lngs);
+        // A far-flung outlier (e.g. an outback trip) would zoom the whole map out —
+        // so focus on Sydney when the spread is huge.
+        if (spanLat > 1.5 || spanLng > 1.5) {
+          map.jumpTo({ center: [151.14, -33.87], zoom: 10 });
+        } else {
+          const b = new maplibregl.LngLatBounds();
+          pinned.forEach(p => b.extend([p.lng, p.lat]));
+          map.fitBounds(b, { padding: 40, maxZoom: 14, duration: 0 });
+        }
+      }
+    });
+  }, 60);
 }

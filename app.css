@@ -484,8 +484,8 @@ body.logged-out .tabbar { display: none; }
   /* Contain Leaflet's high z-indexes so the bottom sheet still sits on top. */
   position: relative; isolation: isolate;
 }
-.memory-map .leaflet-container { height: 100%; width: 100%; font: inherit; background: var(--bg-soft); }
-.memory-map .leaflet-popup-content, .memory-map .leaflet-tooltip { font: inherit; }
+.memory-map.maplibregl-map { font: inherit; background: var(--bg-soft); }
+.memory-map .maplibregl-ctrl-attrib { font-size: 10px; }
 
 .envelope-btn {
   position: fixed; right: 16px; z-index: 45;
