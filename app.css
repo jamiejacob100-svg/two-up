@@ -488,6 +488,13 @@ html.bg-video-on, body.bg-video-on { background: transparent !important; }
 body.bg-video-on .view { background: transparent; }
 body.bg-video-on .demo-banner { background: color-mix(in srgb, var(--accent) 86%, transparent); }
 
+/* With the video on, the control panel's own boxes go clear too — only the
+   functional bits (chips, buttons, sliders, inputs, the active segment, text)
+   keep a background. */
+body.bg-video-on .panel { background: transparent; box-shadow: none; }
+body.bg-video-on .cuisine-sub { background: transparent; border-color: transparent; }
+body.bg-video-on .seg { background: transparent; }
+
 /* --- Memory map --- */
 .memory-map {
   width: 100%; height: 62vh; min-height: 340px;
