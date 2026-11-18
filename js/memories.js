@@ -176,13 +176,4 @@ export async function renderMemories(root, state) {
     }
   }, 60);
 
-  if (!pinned.length) {
-    const note = el("p.page-sub", { style: "margin-top:10px",
-      text: "None of your places have map coordinates yet, so there are no pins. Add coordinates to a place (or ask me to backfill them) and they'll show up here." });
-    root.insertBefore(note, mapEl.nextSibling);
-  } else if (pinned.length < places.length) {
-    const note = el("p.page-sub", { style: "margin-top:10px",
-      text: `${pinned.length} of ${places.length} places are on the map — the rest don't have coordinates yet.` });
-    root.insertBefore(note, mapEl.nextSibling);
-  }
 }
