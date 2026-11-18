@@ -495,6 +495,21 @@ body.bg-video-on .panel { background: transparent; box-shadow: none; }
 body.bg-video-on .cuisine-sub { background: transparent; border-color: transparent; }
 body.bg-video-on .seg { background: transparent; }
 
+/* Every bare label gets the same pill as the chips, so all text sits in a
+   bubble (no more some-with, some-without). */
+body.bg-video-on .page-title,
+body.bg-video-on .page-sub,
+body.bg-video-on .panel-label,
+body.bg-video-on .section-label,
+body.bg-video-on .dist-center {
+  display: block; width: fit-content; max-width: 100%;
+  background: var(--card); border: 1px solid var(--line-strong);
+  border-radius: 999px; padding: 6px 14px;
+}
+/* All segment options become pills too (not just the selected one). */
+body.bg-video-on .seg button { background: var(--card); border: 1px solid var(--line-strong); }
+body.bg-video-on .seg button.on { background: var(--brand); border-color: transparent; color: #fff; box-shadow: none; }
+
 /* --- Memory map --- */
 .memory-map {
   width: 100%; height: 62vh; min-height: 340px;
