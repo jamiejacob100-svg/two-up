@@ -6,6 +6,7 @@ import { renderPick } from "./pick.js";
 import { renderPlan } from "./planner.js";
 import { renderPlans, renderPlanDetail } from "./plans.js";
 import { renderPlaces } from "./places.js";
+import { renderMemories } from "./memories.js";
 
 const view = document.getElementById("view");
 
@@ -55,6 +56,9 @@ async function route() {
     } else if (a === "places") {
       setActiveTab("places");
       await renderPlaces(root, state);
+    } else if (a === "memories") {
+      setActiveTab("memories");
+      await renderMemories(root, state);
     } else {
       setActiveTab("pick");
       await renderPick(root, state);

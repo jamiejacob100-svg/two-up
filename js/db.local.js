@@ -8,6 +8,7 @@ const LS_PLACES    = "twoup.places.v1";    // user-added places
 const LS_OVERRIDES = "twoup.place.ovr.v1"; // edits to any place (incl. demo seed)
 const LS_DELETED   = "twoup.place.del.v1"; // ids of demo/seed places hidden by delete
 const LS_PLANS     = "twoup.plans.v1";     // saved plans
+const LS_MEMORIES  = "twoup.memories.v1";  // photos taken at places
 
 function read(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key)) ?? fallback; }
@@ -89,4 +90,21 @@ export async function savePlan(plan) {
 }
 export async function deletePlan(id) {
   write(LS_PLANS, read(LS_PLANS, []).filter(p => p.id !== id));
+}
+
+// --- Memories (photos taken at a place) ---
+export async function getMemories() {
+  return read(LS_MEMORIES, []).sort((a, b) =>
+    (b.created_at || "").localeCompare(a.created_at || ""));
+}
+export async function addMemory({ place_id, place_name, photo_url }) {
+  const mems = read(LS_MEMORIES, []);
+  const rec = { id: uid("m"), place_id: place_id || null, place_name,
+                photo_url, created_at: new Date().toISOString() };
+  mems.push(rec);
+  write(LS_MEMORIES, mems);
+  return rec;
+}
+export async function deleteMemory(id) {
+  write(LS_MEMORIES, read(LS_MEMORIES, []).filter(m => m.id !== id));
 }

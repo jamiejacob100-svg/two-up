@@ -101,3 +101,22 @@ export async function deletePlan(id) {
   const { error } = await supabase.from("plans").delete().eq("id", id);
   if (error) throw error;
 }
+
+// --- Memories (photos taken at a place) ---
+export async function getMemories() {
+  const { data, error } = await supabase
+    .from("memories").select("*").order("created_at", { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+export async function addMemory({ place_id, place_name, photo_url }) {
+  const created_by = await currentUserId();
+  const row = { place_id: place_id || null, place_name, photo_url, created_by };
+  const { data, error } = await supabase.from("memories").insert(row).select().single();
+  if (error) throw error;
+  return data;
+}
+export async function deleteMemory(id) {
+  const { error } = await supabase.from("memories").delete().eq("id", id);
+  if (error) throw error;
+}

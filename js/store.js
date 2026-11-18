@@ -27,6 +27,11 @@ export async function getPlan(id)      { return (await db()).getPlan(id); }
 export async function savePlan(p)      { return (await db()).savePlan(p); }
 export async function deletePlan(id)   { return (await db()).deletePlan(id); }
 
+// --- Memories (photos taken at places) ---
+export async function getMemories()    { return (await db()).getMemories(); }
+export async function addMemory(m)     { return (await db()).addMemory(m); }
+export async function deleteMemory(id) { return (await db()).deleteMemory(id); }
+
 // --- Saved for later (always local) ---
 const LS_SAVED = "twoup.saved.v1";
 function readSaved()  { try { return JSON.parse(localStorage.getItem(LS_SAVED)) ?? []; } catch { return []; } }

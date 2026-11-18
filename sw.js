@@ -1,7 +1,7 @@
 // --- Service worker: cache the app shell for offline / fast loads ---------
 // Bump CACHE when you change any shell file so clients pick up the new copy.
 
-const CACHE = "twoup-shell-v22";
+const CACHE = "twoup-shell-v23";
 const SHELL = [
   "./",
   "./index.html",
@@ -23,6 +23,7 @@ const SHELL = [
   "./js/pick.js",
   "./js/plans.js",
   "./js/places.js",
+  "./js/memories.js",
 ];
 
 self.addEventListener("install", (e) => {

@@ -70,7 +70,7 @@ export function openSheet({ title = "", body, actions = [], onClose } = {}) {
       el("button.sheet-close", { "aria-label": "Close", onclick: close, html: "✕" }),
     ]),
     el("div.sheet-body", {}, [body]),
-    actions.length && el("footer.sheet-actions", {}, actions),
+    actions.length ? el("footer.sheet-actions", {}, actions) : null,
   ]);
   const overlay = el("div.sheet-overlay", { onclick: (e) => { if (e.target === overlay) close(); } }, [sheet]);
 

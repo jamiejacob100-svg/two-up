@@ -102,7 +102,7 @@ button { font: inherit; cursor: pointer; }
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
   height: calc(var(--tab-h) + var(--safe-b));
   padding-bottom: var(--safe-b);
-  display: grid; grid-template-columns: repeat(4, 1fr);
+  display: grid; grid-template-columns: repeat(5, 1fr);
   background: color-mix(in srgb, var(--card) 86%, transparent);
   backdrop-filter: saturate(180%) blur(18px);
   -webkit-backdrop-filter: saturate(180%) blur(18px);
@@ -475,3 +475,34 @@ body.logged-out .tabbar { display: none; }
 .profile-btn:active { transform: scale(.92); }
 
 .hidden { display: none !important; }
+
+/* --- Memory map --- */
+.memory-map {
+  width: 100%; height: 62vh; min-height: 340px;
+  margin-top: 8px; border-radius: var(--r); overflow: hidden;
+  background: var(--bg-soft); border: 1px solid var(--line-strong);
+  /* Contain Leaflet's high z-indexes so the bottom sheet still sits on top. */
+  position: relative; isolation: isolate;
+}
+.memory-map .leaflet-container { height: 100%; width: 100%; font: inherit; background: var(--bg-soft); }
+.memory-map .leaflet-popup-content, .memory-map .leaflet-tooltip { font: inherit; }
+
+.envelope-btn {
+  position: fixed; right: 16px; z-index: 45;
+  bottom: calc(var(--tab-h) + var(--safe-b) + 16px);
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--card); color: var(--ink);
+  border: 1px solid var(--line-strong); border-radius: 999px;
+  padding: 10px 15px; box-shadow: var(--shadow-lg);
+  font-weight: 800; font-size: 14px; letter-spacing: .02em;
+}
+.envelope-btn:active { transform: scale(.95); }
+.envelope-btn .env-ico { font-size: 17px; }
+.envelope-btn .env-heart { color: #e0557f; }
+
+.memory-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.memory-photo {
+  width: 100%; aspect-ratio: 1 / 1; object-fit: cover;
+  border-radius: 10px; background: var(--bg-soft); display: block;
+}
+.memory-heading { font-size: 15px; font-weight: 800; margin: 14px 0 7px; color: var(--ink); }
