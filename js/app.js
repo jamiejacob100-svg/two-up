@@ -8,6 +8,7 @@ import { renderPlans, renderPlanDetail } from "./plans.js";
 import { renderPlaces } from "./places.js";
 import { renderMemories } from "./memories.js";
 import { loadCategoryPhotos } from "./store.js";
+import { mountBackgroundVideo } from "./background.js";
 
 const view = document.getElementById("view");
 
@@ -102,6 +103,7 @@ async function beginApp() {
   if (!location.hash) location.hash = "#/pick";
   try { await loadCategoryPhotos(); } catch {}   // small, cached — so cards have photos on first paint
   route();
+  mountBackgroundVideo();                        // fire-and-forget, after first paint
 }
 
 // --- Profile button (top-right, logged-in non-demo) ---

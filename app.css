@@ -476,6 +476,18 @@ body.logged-out .tabbar { display: none; }
 
 .hidden { display: none !important; }
 
+/* --- Looping background video --- */
+.bg-video {
+  position: fixed; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; z-index: -1; pointer-events: none;
+}
+/* When the video is on, the page's own backgrounds go clear so it shows through
+   the gaps. Cards, panels, the map, the tab bar, sheets etc. keep their own
+   (opaque) backgrounds, so only the in-between parts are transparent. */
+html.bg-video-on, body.bg-video-on { background: transparent !important; }
+body.bg-video-on .view { background: transparent; }
+body.bg-video-on .demo-banner { background: color-mix(in srgb, var(--accent) 86%, transparent); }
+
 /* --- Memory map --- */
 .memory-map {
   width: 100%; height: 62vh; min-height: 340px;

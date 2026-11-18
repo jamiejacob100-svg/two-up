@@ -1,7 +1,7 @@
 // --- Service worker: cache the app shell for offline / fast loads ---------
 // Bump CACHE when you change any shell file so clients pick up the new copy.
 
-const CACHE = "twoup-shell-v26";
+const CACHE = "twoup-shell-v27";
 const SHELL = [
   "./",
   "./index.html",
@@ -24,6 +24,7 @@ const SHELL = [
   "./js/plans.js",
   "./js/places.js",
   "./js/memories.js",
+  "./js/background.js",
 ];
 
 self.addEventListener("install", (e) => {
@@ -33,7 +34,8 @@ self.addEventListener("install", (e) => {
 self.addEventListener("activate", (e) => {
   e.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
+      // drop old shell caches, but KEEP the background-video cache (twoup-bg-*)
+      Promise.all(keys.filter((k) => k !== CACHE && !k.startsWith("twoup-bg")).map((k) => caches.delete(k)))
     ).then(() => self.clients.claim())
   );
 });
