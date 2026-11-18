@@ -21,7 +21,17 @@ async function fromCache() {
 
 async function fetchSignAndCache() {
   const { supabase } = await import("./supabase.js");
-  const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(VIDEO_PATH, 3600);
+  // Find the video in the bucket by any name (so it works whatever the file is
+  // called), falling back to the expected path.
+  let path = VIDEO_PATH;
+  try {
+    const { data: list } = await supabase.storage.from(BUCKET).list("", { limit: 100 });
+    if (list && list.length) {
+      const vid = list.find(f => /\.(mp4|m4v|mov|webm)$/i.test(f.name || "")) || list.find(f => f.name);
+      if (vid && vid.name) path = vid.name;
+    }
+  } catch { /* keep the default path */ }
+  const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 3600);
   if (error || !data || !data.signedUrl) return null;
   const res = await fetch(data.signedUrl);
   if (!res.ok) return null;
@@ -35,8 +45,9 @@ export async function mountBackgroundVideo() {
   if (document.querySelector(".bg-video")) return;    // already mounted
 
   let url = await fromCache();
-  if (!url) { try { url = await fetchSignAndCache(); } catch { url = null; } }
-  if (!url) return;                                   // not uploaded yet / offline — app stays normal
+  if (!url) { try { url = await fetchSignAndCache(); } catch (e) { console.warn("[bg] video load failed:", e); url = null; } }
+  if (!url) { console.info("[bg] no background video (not uploaded, no permission, or offline)"); return; }
+  console.info("[bg] background video mounted");
 
   const video = document.createElement("video");
   video.className = "bg-video";
