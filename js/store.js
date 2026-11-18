@@ -32,6 +32,34 @@ export async function getMemories()    { return (await db()).getMemories(); }
 export async function addMemory(m)     { return (await db()).addMemory(m); }
 export async function deleteMemory(id) { return (await db()).deleteMemory(id); }
 
+// --- Category photos ---------------------------------------------------------
+// One shared photo per category. Kept out of the big places query so loading the
+// app stays fast. Cached in memory for the session and in localStorage so the
+// second open is instant (fetched fresh in the background).
+const LS_CATPHOTO_CACHE = "twoup.catphoto.cache.v1";
+let _catPhotos = null;
+
+export async function loadCategoryPhotos() {
+  if (_catPhotos) return _catPhotos;
+  try { _catPhotos = JSON.parse(localStorage.getItem(LS_CATPHOTO_CACHE)) || null; } catch {}
+  const refresh = (async () => {
+    try {
+      const fresh = await (await db()).getCategoryPhotos();
+      _catPhotos = fresh;
+      try { localStorage.setItem(LS_CATPHOTO_CACHE, JSON.stringify(fresh)); } catch {}
+    } catch { /* offline / table missing — keep whatever we have */ }
+  })();
+  if (!_catPhotos) await refresh;        // first ever load: wait; otherwise refresh in background
+  return _catPhotos || {};
+}
+export function categoryPhoto(cat) { return (_catPhotos && _catPhotos[cat]) || null; }
+export async function setCategoryPhoto(category, photo_url) {
+  await (await db()).setCategoryPhoto(category, photo_url);
+  _catPhotos = _catPhotos || {};
+  _catPhotos[category] = photo_url;
+  try { localStorage.setItem(LS_CATPHOTO_CACHE, JSON.stringify(_catPhotos)); } catch {}
+}
+
 // --- Saved for later (always local) ---
 const LS_SAVED = "twoup.saved.v1";
 function readSaved()  { try { return JSON.parse(localStorage.getItem(LS_SAVED)) ?? []; } catch { return []; } }

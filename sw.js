@@ -1,7 +1,7 @@
 // --- Service worker: cache the app shell for offline / fast loads ---------
 // Bump CACHE when you change any shell file so clients pick up the new copy.
 
-const CACHE = "twoup-shell-v25";
+const CACHE = "twoup-shell-v26";
 const SHELL = [
   "./",
   "./index.html",
@@ -50,22 +50,9 @@ self.addEventListener("fetch", (e) => {
     return;
   }
 
-  // App code (js/css/html/json/manifest): network-first, so a new deploy
-  // shows up immediately when online. Falls back to cache when offline.
-  if (/\.(js|mjs|css|html|json|webmanifest)$/i.test(url.pathname)) {
-    e.respondWith(
-      fetch(request).then((res) => {
-        if (res && res.status === 200) {
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put(request, copy));
-        }
-        return res;
-      }).catch(() => caches.match(request))
-    );
-    return;
-  }
-
-  // Everything else (images, icons, fonts): cache-first, refresh in background.
+  // Same-origin assets: cache-first (instant), then refresh in the background
+  // so the next open has the newest copy. A CACHE version bump still forces a
+  // full refresh on activate, so deploys land within a reopen or two.
   e.respondWith(
     caches.match(request).then((cached) => {
       const network = fetch(request).then((res) => {

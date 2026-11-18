@@ -6,9 +6,10 @@ import { directionsUrl } from "./geo.js";
 import { addToDraft } from "./planner.js";
 import { DEMO_MODE, GOOGLE_ENABLED } from "./config.js";
 import { placePhoto, placeDetails, priceLevelSigns } from "./places-api.js";
+import { categoryPhoto } from "./store.js";
 
-// Image source: a manual photo link, an already-set photo, else a placeholder.
-function imgSrc(place) { return place.photo_url || place.photo || photoFor(place); }
+// Image source: a per-place photo, else the shared category photo, else a placeholder.
+function imgSrc(place) { return place.photo_url || place.photo || categoryPhoto(place.category) || photoFor(place); }
 
 // Lazy-swap the placeholder for a real Google photo (only when Google is on).
 function maybeLoadPhoto(img, place) {

@@ -7,6 +7,7 @@ import { renderPlan } from "./planner.js";
 import { renderPlans, renderPlanDetail } from "./plans.js";
 import { renderPlaces } from "./places.js";
 import { renderMemories } from "./memories.js";
+import { loadCategoryPhotos } from "./store.js";
 
 const view = document.getElementById("view");
 
@@ -95,10 +96,11 @@ function initInstallHint() {
 
 // --- Enter the app (shared by demo + logged-in) ---
 let started = false;
-function beginApp() {
+async function beginApp() {
   document.body.classList.remove("logged-out");
   if (!started) { started = true; initInstallHint(); }
   if (!location.hash) location.hash = "#/pick";
+  try { await loadCategoryPhotos(); } catch {}   // small, cached — so cards have photos on first paint
   route();
 }
 

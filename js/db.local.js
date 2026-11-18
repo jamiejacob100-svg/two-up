@@ -108,3 +108,12 @@ export async function addMemory({ place_id, place_name, photo_url }) {
 export async function deleteMemory(id) {
   write(LS_MEMORIES, read(LS_MEMORIES, []).filter(m => m.id !== id));
 }
+
+// --- Category photos (demo: localStorage) ---
+const LS_CATPHOTOS = "twoup.catphotos.v1";
+export async function getCategoryPhotos() { return read(LS_CATPHOTOS, {}); }
+export async function setCategoryPhoto(category, photo_url) {
+  const m = read(LS_CATPHOTOS, {});
+  m[category] = photo_url;
+  write(LS_CATPHOTOS, m);
+}

@@ -120,3 +120,16 @@ export async function deleteMemory(id) {
   const { error } = await supabase.from("memories").delete().eq("id", id);
   if (error) throw error;
 }
+
+// --- Category photos (one shared photo per category, kept tiny & separate so
+// the main places query stays light) ---
+export async function getCategoryPhotos() {
+  const { data, error } = await supabase.from("category_photos").select("category,photo_url");
+  if (error) throw error;
+  return Object.fromEntries((data || []).map(r => [r.category, r.photo_url]));
+}
+export async function setCategoryPhoto(category, photo_url) {
+  const { error } = await supabase.from("category_photos")
+    .upsert({ category, photo_url, updated_at: new Date().toISOString() }, { onConflict: "category" });
+  if (error) throw error;
+}
