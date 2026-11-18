@@ -510,6 +510,33 @@ body.bg-video-on .dist-center {
 body.bg-video-on .seg button { background: var(--card); border: 1px solid var(--line-strong); }
 body.bg-video-on .seg button.on { background: var(--brand); border-color: transparent; color: #fff; box-shadow: none; }
 
+/* Glassy bubbles: every pill goes semi-transparent with a frosted blur so the
+   video shimmers through. Active / primary ones keep a brand-tinted glass. */
+body.bg-video-on .chip,
+body.bg-video-on .seg button,
+body.bg-video-on .dist-near,
+body.bg-video-on .budget-num,
+body.bg-video-on .page-title,
+body.bg-video-on .page-sub,
+body.bg-video-on .panel-label,
+body.bg-video-on .section-label,
+body.bg-video-on .dist-center,
+body.bg-video-on .btn {
+  background: color-mix(in srgb, var(--card) 40%, transparent);
+  -webkit-backdrop-filter: blur(12px) saturate(1.4);
+  backdrop-filter: blur(12px) saturate(1.4);
+  border: 1px solid color-mix(in srgb, #ffffff 22%, transparent);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, .12);
+}
+body.bg-video-on .chip.on,
+body.bg-video-on .seg button.on,
+body.bg-video-on .dist-near.on,
+body.bg-video-on .btn-primary {
+  background: color-mix(in srgb, var(--brand) 55%, transparent);
+  border-color: color-mix(in srgb, #ffffff 32%, transparent);
+  color: #fff;
+}
+
 /* --- Memory map --- */
 .memory-map {
   width: 100%; height: 62vh; min-height: 340px;
