@@ -19,5 +19,5 @@ export const DEMO_MODE = !SUPABASE_URL || !SUPABASE_ANON_KEY;
 export const GOOGLE_ENABLED = false;
 
 // App meta
-export const APP_NAME = "Two Up";
+export const APP_NAME = "M❤️J";
 export const CITY = "Sydney";

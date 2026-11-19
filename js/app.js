@@ -123,7 +123,7 @@ function openAccount(auth, user) {
     title: "Account",
     body: el("div", {}, [
       el("p", { text: user.email || "Signed in", style: "font-weight:700;font-size:16px" }),
-      el("p.page-sub", { text: "Signed in to Two Up.", style: "margin-top:2px" }),
+      el("p.page-sub", { text: "Signed in to M❤️J.", style: "margin-top:2px" }),
     ]),
     actions: [
       el("button.btn.btn-ghost", { text: "Close", onclick: () => close() }),
