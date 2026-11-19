@@ -4,7 +4,7 @@
 
 import { supabase } from "./supabase.js";
 
-async function currentUserId() {
+export async function currentUserId() {
   const { data } = await supabase.auth.getUser();
   return data?.user?.id || null;
 }

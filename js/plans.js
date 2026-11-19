@@ -2,13 +2,34 @@
 
 import { el, money, toast, openSheet, emptyState } from "./ui.js";
 import { TEMPLATES, itineraryEl, budgetMeter } from "./planner.js";
-import { getPlans, getPlan, getPlaces, deletePlan } from "./store.js";
+import { getPlans, getPlan, getPlaces, deletePlan, currentUserId } from "./store.js";
 import { APP_NAME } from "./config.js";
 
 function fmtDate(d) {
   if (!d) return "No date set";
   try { return new Date(d + "T00:00").toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" }); }
   catch { return d; }
+}
+
+// A surprise is hidden from the person who DIDN'T make it: they only ever see
+// that it exists, its date and roughly how long it runs — never the contents.
+function lockedForMe(plan, myId) {
+  return plan.mode === "surprise" && plan.created_by && myId && plan.created_by !== myId;
+}
+
+// Human time label from "HH:MM".
+function clock(t) {
+  const d = timeToDec(t); let h = Math.floor(d); const m = Math.round((d - h) * 60);
+  const ap = h >= 12 ? "pm" : "am"; let hh = h % 12; if (hh === 0) hh = 12;
+  return `${hh}:${String(m).padStart(2, "0")}${ap}`;
+}
+// Duration window (start–end) of a plan, without revealing any stop.
+function planWindow(plan) {
+  const ts = (plan.stops || []).map(s => s.time).filter(Boolean).map(timeToDec).sort((a, b) => a - b);
+  if (!ts.length) return null;
+  const back = (dec) => { let h = Math.floor(dec); const m = Math.round((dec - h) * 60); const ap = h >= 12 ? "pm" : "am"; let hh = h % 12; if (hh === 0) hh = 12; return `${hh}:${String(m).padStart(2, "0")}${ap}`; };
+  if (ts.length === 1) return back(ts[0]);
+  return `${back(ts[0])} – ${back(ts[ts.length - 1])}`;
 }
 
 // Current clock as 24h decimal, for surprise reveals.
@@ -34,7 +55,21 @@ export async function renderPlans(root) {
     return;
   }
 
+  const myId = await currentUserId().catch(() => null);
+
   root.append(el("div", {}, plans.map(p => {
+    // A surprise someone else made: show only that it exists + date + duration.
+    if (lockedForMe(p, myId)) {
+      const win = planWindow(p);
+      return el("button.card.plan-item", { onclick: () => location.hash = `#/plan/${p.id}` }, [
+        el("div.plan-ico", { text: "🎁" }),
+        el("div.plan-info", {}, [
+          el("div.plan-name", { text: "A surprise is planned for you" }),
+          el("div.plan-sub", { text: `${fmtDate(p.date)}${win ? " · " + win : ""}` }),
+        ]),
+        el("span.badge.badge-surprise", { text: "🔒" }),
+      ]);
+    }
     const badge = p.mode === "surprise"
       ? el("span.badge.badge-surprise", { text: "Surprise" })
       : el("span.badge.badge-together", { text: "Together" });
@@ -53,6 +88,21 @@ export async function renderPlans(root) {
 export async function renderPlanDetail(root, id, viewer = "creator") {
   const plan = await getPlan(id);
   if (!plan) { root.append(emptyState("🤷", "Plan not found", "It may have been deleted.")); return; }
+
+  // Not your surprise → you only ever see that it exists, its date and window.
+  const myId = await currentUserId().catch(() => null);
+  if (lockedForMe(plan, myId)) {
+    const win = planWindow(plan);
+    root.append(el("header.page-head", {}, [
+      el("button.btn.btn-ghost", { text: "‹ Plans", style: "padding:6px 2px;margin-bottom:6px", onclick: () => location.hash = "#/plans" }),
+      el("h1.page-title", { text: "A surprise 🎁" }),
+      el("p.page-sub", { text: `${fmtDate(plan.date)}${win ? " · " + win : ""}` }),
+    ]));
+    root.append(emptyState("🤫", "It's a surprise",
+      `Your other half has planned something for ${fmtDate(plan.date)}. You'll find out on the day — no peeking!`));
+    return;
+  }
+
   const all = await getPlaces();
   const byId = Object.fromEntries(all.map(p => [p.id, p]));
 

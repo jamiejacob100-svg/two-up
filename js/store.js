@@ -27,6 +27,9 @@ export async function getPlan(id)      { return (await db()).getPlan(id); }
 export async function savePlan(p)      { return (await db()).savePlan(p); }
 export async function deletePlan(id)   { return (await db()).deletePlan(id); }
 
+// --- Who am I (for ownership checks like surprise plans) ---
+export async function currentUserId()  { return (await db()).currentUserId(); }
+
 // --- Memories (photos taken at places) ---
 export async function getMemories()    { return (await db()).getMemories(); }
 export async function addMemory(m)     { return (await db()).addMemory(m); }
