@@ -300,11 +300,11 @@ export async function renderPlan(root, state) {
   async function doSave(p) {
     const body = el("div", {}, [
       el("div.field", {}, [ el("label", { text: "Title" }),
-        el("input.input#plan-title", { value: p.title }) ]),
+        el("input.input", { id: "plan-title", value: p.title }) ]),
       el("div.field", {}, [ el("label", { text: "Date (optional)" }),
-        el("input.input#plan-date", { type: "date", value: p.date || "" }) ]),
+        el("input.input", { id: "plan-date", type: "date", value: p.date || "" }) ]),
       el("div.field", {}, [ el("label", { text: "Mode" }),
-        el("div.seg#plan-mode", {}, [
+        el("div.seg", { id: "plan-mode" }, [
           el("button" + (p.mode === "together" ? ".on" : ""), { text: "Plan together", dataset: { m: "together" } }),
           el("button" + (p.mode === "surprise" ? ".on" : ""), { text: "Surprise them", dataset: { m: "surprise" } }),
         ]) ]),
