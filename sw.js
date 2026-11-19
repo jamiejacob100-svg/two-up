@@ -1,7 +1,7 @@
 // --- Service worker: cache the app shell for offline / fast loads ---------
 // Bump CACHE when you change any shell file so clients pick up the new copy.
 
-const CACHE = "twoup-shell-v40";
+const CACHE = "twoup-shell-v41";
 const SHELL = [
   "./",
   "./index.html",
@@ -25,6 +25,7 @@ const SHELL = [
   "./js/places.js",
   "./js/memories.js",
   "./js/background.js",
+  "./js/notifications.js",
 ];
 
 self.addEventListener("install", (e) => {
@@ -67,4 +68,29 @@ self.addEventListener("fetch", (e) => {
       return cached || network;
     })
   );
+});
+
+// --- Web push: show a notification when the Edge Function pushes one ---------
+self.addEventListener("push", (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch { d = { body: e.data && e.data.text() }; }
+  const title = d.title || "M❤️J";
+  const options = {
+    body: d.body || "",
+    icon: "./icons/icon.svg",
+    badge: "./icons/icon.svg",
+    data: { url: d.url || "./" },
+    tag: d.tag || "mj-plan",
+  };
+  e.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  const url = (e.notification.data && e.notification.data.url) || "./";
+  e.waitUntil((async () => {
+    const all = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    for (const c of all) { if ("focus" in c) return c.focus(); }
+    if (self.clients.openWindow) return self.clients.openWindow(url);
+  })());
 });

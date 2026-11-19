@@ -9,6 +9,7 @@ import { renderPlaces } from "./places.js";
 import { renderMemories } from "./memories.js";
 import { loadCategoryPhotos } from "./store.js";
 import { mountBackgroundVideo } from "./background.js";
+import { enableNotifications, notificationsOn, pushSupported } from "./notifications.js";
 
 const view = document.getElementById("view");
 
@@ -124,6 +125,8 @@ function openAccount(auth, user) {
     body: el("div", {}, [
       el("p", { text: user.email || "Signed in", style: "font-weight:700;font-size:16px" }),
       el("p.page-sub", { text: "Signed in to M❤️J.", style: "margin-top:2px" }),
+      pushSupported() && el("button.btn.btn-soft.btn-block", { text: "🔔 Turn on plan notifications",
+        style: "margin-top:16px", onclick: async (e) => { e.target.disabled = true; await enableNotifications(); e.target.disabled = false; } }),
     ]),
     actions: [
       el("button.btn.btn-ghost", { text: "Close", onclick: () => close() }),

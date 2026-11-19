@@ -21,3 +21,7 @@ export const GOOGLE_ENABLED = false;
 // App meta
 export const APP_NAME = "M❤️J";
 export const CITY = "Sydney";
+
+// Web-push public (VAPID) key — safe in frontend. The matching private key lives
+// only as a secret in your Supabase Edge Function. Empty = notifications off.
+export const VAPID_PUBLIC = "BKnnKjWuR5qmfQwEEF9hxujmKwtHDML80vzDnX8BQweeG9JULHAgnNIsa3MerpUCH7gJnlvXe5pGxLuBRzCHgRo";
