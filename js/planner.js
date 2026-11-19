@@ -328,11 +328,16 @@ export async function renderPlan(root, state) {
             s.hint = "Stop " + (i + 1);
           });
         }
-        const id = await savePlan(structuredClone(p));
-        close();
-        toast("Plan saved ♡");
-        clearDraft();
-        location.hash = "#/plans";
+        try {
+          await savePlan(JSON.parse(JSON.stringify(p)));
+          close();
+          toast("Plan saved ♡");
+          clearDraft();
+          location.hash = "#/plans";
+        } catch (e) {
+          console.error("save plan failed:", e);
+          toast("Couldn't save the plan: " + (e.message || e), 9000);
+        }
       }}) ],
     });
   }

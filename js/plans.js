@@ -16,12 +16,18 @@ function nowDec() { const n = new Date(); return n.getHours() + n.getMinutes() /
 function timeToDec(t) { const [h, m] = (t || "0:0").split(":").map(Number); return h + (m || 0) / 60; }
 
 export async function renderPlans(root) {
-  const plans = await getPlans();
-
   root.append(el("header.page-head", {}, [
     el("h1.page-title", { text: "Our plans" }),
     el("p.page-sub", { text: "Saved days out. Tap to open, swap or share." }),
   ]));
+
+  let plans = [];
+  try { plans = await getPlans(); }
+  catch (e) {
+    console.error("load plans failed:", e);
+    root.append(emptyState("⚠️", "Couldn't load your plans", (e.message || String(e))));
+    return;
+  }
 
   if (!plans.length) {
     root.append(emptyState("💌", "No plans yet", "Build one in the Plan tab, then save it here."));
