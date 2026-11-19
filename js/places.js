@@ -30,14 +30,48 @@ function addPlaceFlow(state) {
 
   function manualStep() {
     const form = placeForm({});
+    const footer = el("div");
     body.replaceChildren(
       el("p.lede", { text: "Add a place with your own details." }),
       form.node,
-      el("button.btn.btn-primary.btn-block.btn-lg", { text: "Save place", onclick: save }),
+      footer,
     );
+    showSaveBtn();
+
+    function showSaveBtn() {
+      footer.replaceChildren(
+        el("button.btn.btn-primary.btn-block.btn-lg", { text: "Save place", onclick: save }),
+      );
+    }
+
     async function save() {
       const v = form.collect();
       if (!v.name) { toast("Give it a name first"); return; }
+      // Warn if something in the app is already called this.
+      let existing = [];
+      try { existing = await getPlaces(); } catch {}
+      const want = v.name.trim().toLowerCase();
+      const dup = existing.find(p => (p.name || "").trim().toLowerCase() === want);
+      if (dup) { showDupWarning(v, dup); return; }
+      await doSave(v);
+    }
+
+    function showDupWarning(v, dup) {
+      const cat = CATEGORIES[dup.category];
+      footer.replaceChildren(
+        el("div.dup-warn", {}, [
+          el("p.dup-warn-text", {
+            html: `⚠️ You already have a place called <strong>“${dup.name}”</strong>${cat ? ` in ${cat.icon} ${cat.label}` : ""}. Add this one anyway?`,
+          }),
+          el("div.del-confirm", {}, [
+            el("button.btn.btn-soft", { text: "Disregard", onclick: showSaveBtn }),
+            el("button.btn.btn-primary", { text: "Add anyway", onclick: () => doSave(v) }),
+          ]),
+        ]),
+      );
+    }
+
+    async function doSave(v) {
       await addPlace({
         google_place_id: "", name: v.name, category: v.category, area: v.area,
         est_cost_for_two: v.est_cost_for_two, vibe: v.vibe, setting: v.setting,
@@ -125,6 +159,9 @@ function addPlaceFlow(state) {
     const cost = el("input.input", { type: "number", min: "0", step: "5", placeholder: "e.g. 40", value: "" });
     const notes = el("textarea.input", { placeholder: "What's good about it?" });
 
+    const footer = el("div");
+    const saveBtn = el("button.btn.btn-primary.btn-block.btn-lg", { text: "Save place", onclick: trySave });
+    footer.append(saveBtn);
     body.replaceChildren(
       el("button.btn.btn-ghost", { text: "‹ Back to search", style: "padding:6px 2px", onclick: searchStep }),
       el("h3", { text: result.name, style: "font-size:18px;font-weight:760;margin:6px 0" }),
@@ -134,19 +171,39 @@ function addPlaceFlow(state) {
       el("div.field", {}, [ el("label", { text: "Vibe" }), vibeSeg ]),
       el("div.field", {}, [ el("label", { text: "Setting" }), setSeg ]),
       el("div.field", {}, [ el("label", { text: "Our notes" }), notes ]),
-      el("button.btn.btn-primary.btn-block.btn-lg", { text: "Save place", onclick: async () => {
-        await addPlace({
-          google_place_id: result.google_place_id, name: result.name, category: cat,
-          area: result.address.split(",").slice(-1)[0].trim() || "Sydney",
-          est_cost_for_two: cost.value ? +cost.value : 0,
-          vibe: [...vibes], setting, lat: result.lat, lng: result.lng,
-          our_notes: notes.value.trim(),
-        });
-        close();
-        toast(`Added ${result.name} ♡`);
-        state.rerender();
-      }}),
+      footer,
     );
+
+    async function trySave() {
+      let existing = [];
+      try { existing = await getPlaces(); } catch {}
+      const want = (result.name || "").trim().toLowerCase();
+      const dup = existing.find(p => (p.name || "").trim().toLowerCase() === want);
+      if (dup) {
+        const dcat = CATEGORIES[dup.category];
+        footer.replaceChildren(el("div.dup-warn", {}, [
+          el("p.dup-warn-text", { html: `⚠️ You already have a place called <strong>“${dup.name}”</strong>${dcat ? ` in ${dcat.icon} ${dcat.label}` : ""}. Add this one anyway?` }),
+          el("div.del-confirm", {}, [
+            el("button.btn.btn-soft", { text: "Disregard", onclick: () => footer.replaceChildren(saveBtn) }),
+            el("button.btn.btn-primary", { text: "Add anyway", onclick: doAdd }),
+          ]),
+        ]));
+        return;
+      }
+      await doAdd();
+    }
+    async function doAdd() {
+      await addPlace({
+        google_place_id: result.google_place_id, name: result.name, category: cat,
+        area: result.address.split(",").slice(-1)[0].trim() || "Sydney",
+        est_cost_for_two: cost.value ? +cost.value : 0,
+        vibe: [...vibes], setting, lat: result.lat, lng: result.lng,
+        our_notes: notes.value.trim(),
+      });
+      close();
+      toast(`Added ${result.name} ♡`);
+      state.rerender();
+    }
   }
 }
 

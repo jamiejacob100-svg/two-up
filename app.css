@@ -135,6 +135,8 @@ button { font: inherit; cursor: pointer; }
 .btn-ghost.btn-danger { background: transparent; color: var(--bad); border-color: var(--bad); }
 .del-confirm { display: flex; gap: 10px; }
 .del-confirm .btn { flex: 1; }
+.dup-warn { background: var(--card-2); border: 1px solid var(--line-strong); border-radius: 14px; padding: 14px; }
+.dup-warn-text { font-size: 14px; color: var(--ink); margin: 0 0 12px; text-align: center; line-height: 1.45; }
 
 /* --- Chips / pills --- */
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
