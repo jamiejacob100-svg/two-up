@@ -156,6 +156,36 @@ export async function renderPlans(root) {
       calBtn(p, false),
     ]);
   })));
+
+  // Danger zone: clear every saved plan at once.
+  root.append(el("button.btn.btn-ghost.btn-block", {
+    text: `🗑 Delete all plans (${plans.length})`,
+    style: "margin-top:22px;color:var(--bad)",
+    onclick: () => confirmDeleteAll(plans),
+  }));
+}
+
+function confirmDeleteAll(plans) {
+  const close = openSheet({
+    title: "Delete all plans?",
+    body: el("p.lede", { text: `All ${plans.length} saved plan${plans.length === 1 ? "" : "s"} will be removed for both of you. This can't be undone.` }),
+    actions: [
+      el("button.btn.btn-ghost", { text: "Cancel", onclick: () => close() }),
+      el("button.btn.btn-primary", { text: "Delete all", style: "background:var(--bad)", onclick: async (e) => {
+        const btn = e.target; btn.disabled = true; btn.textContent = "Deleting…";
+        try {
+          for (const p of plans) await deletePlan(p.id);
+          close();
+          toast("All plans deleted");
+          location.reload(); // refresh the now-empty list
+        } catch (err) {
+          console.error("delete all failed:", err);
+          btn.disabled = false; btn.textContent = "Delete all";
+          toast("Couldn't delete: " + (err.message || err), 8000);
+        }
+      }}),
+    ],
+  });
 }
 
 // Full-page plan view (route #/plan/:id). `viewer` = 'creator' | 'guest'.
