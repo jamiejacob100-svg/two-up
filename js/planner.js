@@ -204,7 +204,10 @@ export function itineraryEl(plan, opts = {}) {
               warn && el("span.hours-warn", { text: "  ⚠ likely closed" }),
             ]),
           ]),
-          opts.editable && el("button.stop-swap", { text: "Swap", onclick: () => opts.onSwap(i) }),
+          opts.editable && el("div.stop-actions", {}, [
+            opts.onSwap && el("button.stop-swap", { text: "Swap", onclick: () => opts.onSwap(i) }),
+            opts.onRemove && el("button.stop-remove", { text: "✕", title: "Remove", onclick: () => opts.onRemove(i) }),
+          ]),
         ])
       : el("div.stop-card", {}, [
           el("div.stop-thumb", { style: "display:flex;align-items:center;justify-content:center;font-size:22px", text: "🔒" }),
@@ -272,6 +275,72 @@ async function swapStop(plan, index, placesById, rerender) {
   const close = openSheet({ title: `Swap ${CATEGORIES[current.category].label.toLowerCase()}`, body });
 }
 
+// --- Build from scratch: add a stop by hand -------------------------------
+// A sensible start time for the next stop: after the last one finishes
+// (its duration + a little travel), else a gentle 9:30 morning start.
+function defaultNextTime(plan, byId) {
+  const stops = plan.stops || [];
+  if (!stops.length) return "9:30";
+  const last = stops[stops.length - 1];
+  const lastPlace = byId[last.placeId];
+  const dur = lastPlace ? stopHours(lastPlace) : 1.5;
+  let dec = timeToDec(last.time || "9:30") + dur + 0.25;
+  if (dec >= 23.5) dec = 23.5;
+  return decToTime(dec);
+}
+
+function addStop(plan, byId, rerender) {
+  const all = Object.values(byId);
+  const inPlan = new Set(plan.stops.map(s => s.placeId));
+  let activeCat = null;
+
+  const list = el("div.add-list");
+  const chips = el("div.add-cats");
+
+  function drawList() {
+    list.replaceChildren();
+    let pool = all.filter(p => !inPlan.has(p.id));
+    if (activeCat) pool = pool.filter(p => p.category === activeCat);
+    pool.sort((a, b) => (b.our_rating || 0) - (a.our_rating || 0));
+    if (!pool.length) { list.append(el("p.lede", { text: "Nothing left in this category." })); return; }
+    pool.slice(0, 40).forEach(p => {
+      const c = CATEGORIES[p.category];
+      list.append(el("button.result-row", {
+        onclick: () => {
+          plan.stops.push({ placeId: p.id, time: defaultNextTime(plan, byId) });
+          plan.stops.sort((x, y) => timeToDec(x.time) - timeToDec(y.time));
+          close();
+          rerender();
+          toast(`Added ${p.name}`);
+        },
+      }, [
+        el("img.stop-thumb", { src: p.photo || photoFor(p), alt: "" }),
+        el("div", {}, [
+          el("div.result-name", { text: p.name }),
+          el("div.result-addr", { text: `${c.icon} ${c.label} · ${p.area} · ${money(p.est_cost_for_two)}` }),
+        ]),
+      ]));
+    });
+  }
+
+  // Category filter chips (All + each category that has places left).
+  const cats = [...new Set(all.filter(p => !inPlan.has(p.id)).map(p => p.category))];
+  const chipBtn = (key, label) => {
+    const b = el("button.add-chip" + (activeCat === key ? ".on" : ""), { text: label, onclick: () => {
+      activeCat = key;
+      chips.querySelectorAll(".add-chip").forEach(x => x.classList.remove("on"));
+      b.classList.add("on");
+      drawList();
+    }});
+    return b;
+  };
+  chips.append(chipBtn(null, "All"));
+  cats.forEach(k => chips.append(chipBtn(k, `${CATEGORIES[k].icon} ${CATEGORIES[k].label}`)));
+
+  drawList();
+  const close = openSheet({ title: "Add a stop", body: el("div", {}, [chips, list]) });
+}
+
 // --- The Plan tab ---
 export async function renderPlan(root, state) {
   const all = await getPlaces();
@@ -296,6 +365,8 @@ export async function renderPlan(root, state) {
         text: t.label,
         onclick: () => { state.tpl = k; generate(); },
       }))),
+    el("button.btn.btn-soft.btn-block", { text: "✏️ Build your own from scratch", style: "margin-top:12px",
+      onclick: () => startScratch() }),
     el("div.panel-label", { text: "Budget", style: "margin-top:16px" }),
     budgetCtl,
   ]);
@@ -307,6 +378,13 @@ export async function renderPlan(root, state) {
     state.workingPlan = plan;
     render();
   }
+  function startScratch() {
+    state.tpl = null;
+    plan = { template: null, budget: state.budget, mode: "together", title: "My plan", date: "", stops: [] };
+    state.workingPlan = plan;
+    render();
+    addStop(plan, byId, refresh); // jump straight into picking the first stop
+  }
   function refresh() { render(); }
 
   function render() {
@@ -315,26 +393,44 @@ export async function renderPlan(root, state) {
       b.classList.toggle("on", Object.keys(TEMPLATES)[idx] === state.tpl);
     });
     out.replaceChildren();
-    if (!plan || !plan.stops.length) {
+
+    // No plan yet → invite choosing a template or building from scratch.
+    if (!plan) {
       out.append(el("div.empty", {}, [
         el("div.empty-ico", { text: "🗺️" }),
-        el("p.empty-title", { text: "Choose a template to build your day" }),
+        el("p.empty-title", { text: "Choose a template, or build your own" }),
+        el("button.btn.btn-primary", { text: "✏️ Start from scratch", style: "margin-top:14px",
+          onclick: () => startScratch() }),
       ]));
       return;
     }
+
+    const scratch = !plan.template;
     const { node, spent } = itineraryEl(plan, {
       placesById: byId, editable: true,
       onSwap: (i) => swapStop(plan, i, byId, refresh),
-      onTimeChange: (i, hhmm) => { if (hhmm) plan.stops[i].time = hhmm; },
+      onRemove: scratch ? (i) => { plan.stops.splice(i, 1); refresh(); } : undefined,
+      onTimeChange: (i, hhmm) => { if (hhmm) { plan.stops[i].time = hhmm; } },
     });
-    out.append(
-      el("div.panel", {}, [ el("div.panel-label", { text: "Budget so far" }), budgetMeter(spent, plan.budget) ]),
-      node,
-      el("div.row-split", { style: "margin-top:18px" }, [
-        el("button.btn.btn-soft", { text: "🎲 New idea", onclick: generate }),
-        el("button.btn.btn-primary", { text: "💾 Save plan", onclick: () => doSave(plan) }),
-      ]),
-    );
+
+    out.append(el("div.panel", {}, [ el("div.panel-label", { text: "Budget so far" }), budgetMeter(spent, plan.budget) ]));
+
+    if (plan.stops.length) out.append(node);
+    else out.append(el("div.empty", { style: "padding:28px 10px" }, [
+      el("div.empty-ico", { text: "➕" }),
+      el("p.empty-title", { text: "Your plan is empty — add your first stop" }),
+    ]));
+
+    out.append(el("button.btn.btn-soft.btn-block", { text: "➕ Add a stop", style: "margin-top:14px",
+      onclick: () => addStop(plan, byId, refresh) }));
+
+    out.append(el("div.row-split", { style: "margin-top:12px" }, [
+      scratch
+        ? el("button.btn.btn-ghost", { text: "↺ Clear", onclick: () => { plan.stops = []; refresh(); } })
+        : el("button.btn.btn-soft", { text: "🎲 New idea", onclick: generate }),
+      el("button.btn.btn-primary", { text: "💾 Save plan", onclick: () => doSave(plan),
+        disabled: plan.stops.length ? null : true }),
+    ]));
   }
 
   async function doSave(p) {
@@ -359,6 +455,8 @@ export async function renderPlan(root, state) {
       actions: [ el("button.btn.btn-primary.btn-block", { text: "Save", onclick: async () => {
         p.title = body.querySelector("#plan-title").value.trim() || p.title;
         p.date = body.querySelector("#plan-date").value;
+        // Keep stops in chronological order (manual builds / edited times).
+        p.stops.sort((a, b) => timeToDec(a.time || "0:0") - timeToDec(b.time || "0:0"));
         // Surprise mode: add reveal times (1h before each stop).
         if (p.mode === "surprise") {
           p.stops.forEach((s, i) => {
