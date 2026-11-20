@@ -1,37 +1,21 @@
 // --- Day planner: templates, proximity chaining, travel, budget -----------
 
 import { el, money, toast, openSheet, budgetControl } from "./ui.js";
-import { CATEGORIES, TIME_SLOTS, photoFor } from "./data.js";
-import { travelEstimate, fmtTravel, directionsUrl } from "./geo.js";
+import { CATEGORIES, TIME_SLOTS, photoFor, CITY_CENTER, zoneOf } from "./data.js";
+import { travelEstimate, fmtTravel, directionsUrl, haversineKm } from "./geo.js";
 import { getPlaces, savePlan } from "./store.js";
 
 const DRAFT_KEY = "twoup.draft.v1";
 
-// Each template is a list of slots: { cats: [...accepted], time: "9:30" }.
+// Each template is a time window (start→end, 24h decimal) plus a "shape": the
+// ordered categories to try to fit. Stops are scheduled by real travel + how
+// long each thing takes, and we stop once the day's time runs out — so a hike
+// far away (long drive + long walk) naturally leaves room for little else.
 export const TEMPLATES = {
-  full: { label: "Full day", slots: [
-    { cats: ["coffee"], time: "9:30" },
-    { cats: ["activity"], time: "11:00" },
-    { cats: ["food"], time: "13:00" },
-    { cats: ["activity", "view"], time: "15:30" },
-    { cats: ["food"], time: "18:30" },
-    { cats: ["drinks"], time: "20:30" },
-  ]},
-  half: { label: "Half day", slots: [
-    { cats: ["coffee"], time: "10:00" },
-    { cats: ["activity"], time: "11:30" },
-    { cats: ["food"], time: "13:30" },
-    { cats: ["dessert", "view"], time: "15:00" },
-  ]},
-  evening: { label: "Evening", slots: [
-    { cats: ["food"], time: "18:30" },
-    { cats: ["dessert", "drinks"], time: "20:00" },
-    { cats: ["view", "drinks"], time: "21:15" },
-  ]},
-  quick: { label: "Quick date", slots: [
-    { cats: ["coffee"], time: "11:00" },
-    { cats: ["activity", "dessert"], time: "12:15" },
-  ]},
+  full:    { label: "Full day",   start: 9.5, end: 21,   shape: [["coffee"], ["activity", "beach"], ["food"], ["activity", "view", "beach"], ["food", "view"], ["drinks"]] },
+  half:    { label: "Half day",   start: 10,  end: 16,   shape: [["coffee"], ["activity", "beach"], ["food"], ["dessert", "view"]] },
+  evening: { label: "Evening",    start: 18,  end: 23,   shape: [["food"], ["dessert", "drinks"], ["view", "drinks"]] },
+  quick:   { label: "Quick date", start: 11,  end: 14.5, shape: [["coffee"], ["activity", "dessert"]] },
 };
 
 // Numeric open/close (24h decimal) per category, for the hours check.
@@ -89,33 +73,64 @@ function weightedPick(items, weightFn) {
   return items[items.length - 1];
 }
 
+// Rough travel time between two places, in hours. Walk if very close, else drive
+// at a speed that rises with distance (city crawl → highway for day trips).
+function travelHours(a, b) {
+  const km = haversineKm(a, b);
+  if (km == null) return 0.2;                       // unknown coords → assume ~12 min
+  if (km < 2.5) return Math.max(0.05, km / 4.5);    // walking
+  const speed = km < 20 ? 24 : km < 60 ? 55 : 75;   // km/h, incl. real roads below
+  return (km * 1.15) / speed;
+}
+
+// How long you'd actually spend at a place, in hours. Far-flung hikes / beaches
+// are day trips, so they take much longer.
+export function stopHours(place) {
+  const base = { coffee: 0.75, food: 1.5, view: 2, drinks: 1.5, dessert: 0.75,
+                 activity: 2.5, beach: 2.5, sidequest: 1.5, bedrot: 2 };
+  let h = base[place.category] ?? 1.5;
+  if (place.category === "activity" || place.category === "beach") {
+    const farZone = ["bluemtns", "outback", "royal"].includes(zoneOf(place));
+    const dist = (place.lat != null && place.lng != null) ? haversineKm(CITY_CENTER, place) : 0;
+    if (farZone || dist > 45) h = Math.max(h, 4);        // Blue Mtns / outback / big hikes
+    else if (dist > 20) h = Math.max(h, 3);              // further day-walks
+  }
+  return h;
+}
+
+// Decimal hours → "H:MM", rounded to the nearest 5 minutes.
+function decToTime(dec) {
+  let total = Math.round((dec * 60) / 5) * 5;
+  let h = Math.floor(total / 60) % 24;
+  const m = total % 60;
+  return `${h}:${String(m).padStart(2, "0")}`;
+}
+
 export async function buildDayPlan({ template, budget, vibe, setting }) {
   const all = await getPlaces();
   const tpl = TEMPLATES[template];
   const used = new Set();
   const stops = [];
-  const totalSlots = tpl.slots.length;
+  const shape = tpl.shape;
 
   const matches = (p, cats) => cats.includes(p.category)
     && (!vibe || (p.vibe || []).includes(vibe))
     && (!setting || setting === "either" || p.setting === "either" || p.setting === setting);
 
-  let prev = null;
+  let cursor = tpl.start;   // decimal hours, the running clock
+  let prev = null;          // previous place
   let spent = 0;
-  const MAX_KM = 15;
 
-  tpl.slots.forEach((slot, i) => {
-    let pool = all.filter(p => !used.has(p.id) && matches(p, slot.cats));
-    if (!pool.length) pool = all.filter(p => !used.has(p.id) && slot.cats.includes(p.category)); // relax filters
-    if (!pool.length) return;
+  for (let i = 0; i < shape.length; i++) {
+    const cats = shape[i];
+    let pool = all.filter(p => !used.has(p.id) && matches(p, cats));
+    if (!pool.length) pool = all.filter(p => !used.has(p.id) && cats.includes(p.category)); // relax
+    if (!pool.length) continue;
 
-    // How much is left to spend, spread over the remaining stops.
-    const slotsLeft = totalSlots - i;
+    const slotsLeft = shape.length - i;
     const remaining = Math.max(0, budget - spent);
     const perSlot = remaining / slotsLeft;
 
-    // Prefer options that fit the per-slot allowance; if nothing fits, fall
-    // back to the cheapest handful so we don't blow the budget on one stop.
     let candidates = pool.filter(p => (p.est_cost_for_two || 0) <= perSlot * 1.4);
     if (!candidates.length) {
       candidates = pool.slice().sort((a, b) => (a.est_cost_for_two || 0) - (b.est_cost_for_two || 0))
@@ -123,25 +138,42 @@ export async function buildDayPlan({ template, budget, vibe, setting }) {
     }
 
     const pick = weightedPick(candidates, (p) => {
-      const t = prev ? travelEstimate(prev, p) : null;
-      const proximity = !prev ? 1 : (t ? Math.max(0.05, 1 - t.km / MAX_KM) : 0.6); // nearer = better; neutral if unknown
-      const rating = (p.our_rating || 3.5) / 5;                                 // 0..1
+      const km = prev ? haversineKm(prev, p) : null;
+      const proximity = !prev ? 1 : (km != null ? Math.max(0.05, 1 - km / 40) : 0.6);
+      const rating = (p.our_rating || 3.5) / 5;
       const cost = p.est_cost_for_two || 0;
-      const budgetFit = perSlot > 0 ? Math.max(0.1, 1 - cost / (perSlot * 2 + 1)) : 0.5; // cheaper = safer
-      return proximity * 1.6 + rating * 1.0 + budgetFit * 1.2;
+      const budgetFit = perSlot > 0 ? Math.max(0.1, 1 - cost / (perSlot * 2 + 1)) : 0.5;
+      return proximity * 1.4 + rating * 1.0 + budgetFit * 1.0;
     });
 
+    const travel = prev ? travelHours(prev, pick) : 0;
+    const arrival = Math.max(cursor + travel, tpl.start);
+    const dur = stopHours(pick);
+    // Once the day is already running, stop adding things that won't fit.
+    if (stops.length && arrival + dur > tpl.end + 0.25) break;
+
     used.add(pick.id);
-    stops.push({ placeId: pick.id, time: slot.time });
+    stops.push({ placeId: pick.id, time: decToTime(arrival) });
     spent += pick.est_cost_for_two || 0;
+    cursor = arrival + dur;
     prev = pick;
-  });
+
+    if (cursor >= tpl.end) break; // day is full
+  }
 
   return { template, budget, mode: "together", date: "", title: tpl.label + " in Sydney", stops };
 }
 
+// "9:5" / "9:30" → "09:30" for <input type="time">; "" stays "".
+function padTime(t) {
+  if (!t) return "";
+  const m = String(t).match(/^(\d{1,2}):(\d{1,2})$/);
+  if (!m) return t;
+  return `${m[1].padStart(2, "0")}:${m[2].padStart(2, "0")}`;
+}
+
 // --- Rendering an itinerary ---
-// opts: { placesById, onSwap(index), reveal(stop)->bool, editable }
+// opts: { placesById, onSwap(index), reveal(stop)->bool, editable, onTimeChange(index, hhmm) }
 export function itineraryEl(plan, opts = {}) {
   const byId = opts.placesById;
   const wrap = el("div.timeline");
@@ -182,8 +214,15 @@ export function itineraryEl(plan, opts = {}) {
           ]),
         ]);
 
+    const timeEl = (opts.editable && opts.onTimeChange && revealed)
+      ? el("input.stop-time-input", {
+          type: "time", value: padTime(stop.time),
+          onchange: (e) => opts.onTimeChange(i, e.target.value),
+        })
+      : el("div.stop-time", { text: stop.time });
+
     wrap.append(el("div.stop", {}, [
-      el("div.stop-time", { text: stop.time }),
+      timeEl,
       el("div.stop-main", {}, [card]),
     ]));
   });
@@ -286,6 +325,7 @@ export async function renderPlan(root, state) {
     const { node, spent } = itineraryEl(plan, {
       placesById: byId, editable: true,
       onSwap: (i) => swapStop(plan, i, byId, refresh),
+      onTimeChange: (i, hhmm) => { if (hhmm) plan.stops[i].time = hhmm; },
     });
     out.append(
       el("div.panel", {}, [ el("div.panel-label", { text: "Budget so far" }), budgetMeter(spent, plan.budget) ]),

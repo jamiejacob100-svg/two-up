@@ -1,7 +1,7 @@
 // --- Plans tab: list, view, share, surprise reveal ------------------------
 
 import { el, money, toast, openSheet, emptyState } from "./ui.js";
-import { TEMPLATES, itineraryEl, budgetMeter } from "./planner.js";
+import { TEMPLATES, itineraryEl, budgetMeter, stopHours } from "./planner.js";
 import { getPlans, getPlan, getPlaces, deletePlan, currentUserId } from "./store.js";
 import { APP_NAME } from "./config.js";
 
@@ -36,6 +36,66 @@ function planWindow(plan) {
 function nowDec() { const n = new Date(); return n.getHours() + n.getMinutes() / 60; }
 function timeToDec(t) { const [h, m] = (t || "0:0").split(":").map(Number); return h + (m || 0) / 60; }
 
+// --- Sync to Apple / device calendar (iCalendar .ics) ----------------------
+function icsEscape(s) { return String(s || "").replace(/[\\;,]/g, (m) => "\\" + m).replace(/\n/g, "\\n"); }
+
+// "YYYY-MM-DD" + "H:MM" (+ optional hours) → floating local "YYYYMMDDTHHMMSS".
+function icsStamp(dateStr, timeStr, addHrs = 0) {
+  const [y, mo, d] = (dateStr || "").split("-").map(Number);
+  const [h, mi] = (timeStr || "0:0").split(":").map(Number);
+  const dt = new Date(y, (mo || 1) - 1, d || 1, h || 0, mi || 0);
+  if (addHrs) dt.setMinutes(dt.getMinutes() + Math.round(addHrs * 60));
+  const p = (n) => String(n).padStart(2, "0");
+  return `${dt.getFullYear()}${p(dt.getMonth() + 1)}${p(dt.getDate())}T${p(dt.getHours())}${p(dt.getMinutes())}00`;
+}
+
+function buildICS(plan, byId, locked) {
+  const now = new Date().toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//M❤️J//Date Planner//EN", "CALSCALE:GREGORIAN"];
+  const ev = (uid, start, end, summary, location) => {
+    lines.push("BEGIN:VEVENT", `UID:${uid}`, `DTSTAMP:${now}`, `DTSTART:${start}`, `DTEND:${end}`,
+      `SUMMARY:${icsEscape(summary)}`);
+    if (location) lines.push(`LOCATION:${icsEscape(location)}`);
+    lines.push("END:VEVENT");
+  };
+
+  const times = (plan.stops || []).map((s) => s.time).filter(Boolean).sort((a, b) => timeToDec(a) - timeToDec(b));
+  if (locked) {
+    // Don't reveal any stop: one block spanning the whole window.
+    const start = times[0] || "18:00";
+    const endDec = times.length ? timeToDec(times[times.length - 1]) + 2 : timeToDec(start) + 2;
+    ev(`mj-${plan.id}-surprise`, icsStamp(plan.date, start), icsStamp(plan.date, "0:0", endDec),
+      "A surprise 🎁 (M❤️J)");
+  } else {
+    (plan.stops || []).forEach((s, i) => {
+      const place = byId[s.placeId];
+      if (!place || !s.time) return;
+      const dur = stopHours(place);
+      ev(`mj-${plan.id}-${i}`, icsStamp(plan.date, s.time), icsStamp(plan.date, s.time, dur),
+        place.name, place.address || place.area || "");
+    });
+  }
+  lines.push("END:VCALENDAR");
+  return lines.join("\r\n");
+}
+
+function downloadICS(filename, text) {
+  const blob = new Blob([text], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = el("a", { href: url, download: filename });
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 3000);
+}
+
+function syncToCalendar(plan, byId, locked) {
+  if (!plan.date) { toast("Add a date to this plan first"); return; }
+  const hasStops = (plan.stops || []).some((s) => s.time && (locked || byId[s.placeId]));
+  if (!hasStops) { toast("Nothing to add yet"); return; }
+  const name = locked ? "surprise" : (plan.title || "plan").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  downloadICS(`${name || "plan"}.ics`, buildICS(plan, byId, locked));
+  toast("Opening in Calendar…");
+}
+
 export async function renderPlans(root) {
   root.append(el("header.page-head", {}, [
     el("h1.page-title", { text: "Our plans" }),
@@ -56,30 +116,44 @@ export async function renderPlans(root) {
   }
 
   const myId = await currentUserId().catch(() => null);
+  const all = await getPlaces().catch(() => []);
+  const byId = Object.fromEntries(all.map(p => [p.id, p]));
+
+  // Small "add to Apple Calendar" button that sits beside each plan.
+  const calBtn = (p, locked) => el("button.plan-cal", {
+    text: "📅", title: "Sync to calendar",
+    onclick: (e) => { e.stopPropagation(); syncToCalendar(p, byId, locked); },
+  });
 
   root.append(el("div", {}, plans.map(p => {
     // A surprise someone else made: show only that it exists + date + duration.
     if (lockedForMe(p, myId)) {
       const win = planWindow(p);
-      return el("button.card.plan-item", { onclick: () => location.hash = `#/plan/${p.id}` }, [
-        el("div.plan-ico", { text: "🎁" }),
-        el("div.plan-info", {}, [
-          el("div.plan-name", { text: "A surprise is planned for you" }),
-          el("div.plan-sub", { text: `${fmtDate(p.date)}${win ? " · " + win : ""}` }),
+      return el("div.plan-row", {}, [
+        el("button.card.plan-item", { onclick: () => location.hash = `#/plan/${p.id}` }, [
+          el("div.plan-ico", { text: "🎁" }),
+          el("div.plan-info", {}, [
+            el("div.plan-name", { text: "A surprise is planned for you" }),
+            el("div.plan-sub", { text: `${fmtDate(p.date)}${win ? " · " + win : ""}` }),
+          ]),
+          el("span.badge.badge-surprise", { text: "🔒" }),
         ]),
-        el("span.badge.badge-surprise", { text: "🔒" }),
+        calBtn(p, true),
       ]);
     }
     const badge = p.mode === "surprise"
       ? el("span.badge.badge-surprise", { text: "Surprise" })
       : el("span.badge.badge-together", { text: "Together" });
-    return el("button.card.plan-item", { onclick: () => location.hash = `#/plan/${p.id}` }, [
-      el("div.plan-ico", { text: p.mode === "surprise" ? "🎁" : "🗓️" }),
-      el("div.plan-info", {}, [
-        el("div.plan-name", { text: p.title }),
-        el("div.plan-sub", { text: `${fmtDate(p.date)} · ${p.stops.length} stops` }),
+    return el("div.plan-row", {}, [
+      el("button.card.plan-item", { onclick: () => location.hash = `#/plan/${p.id}` }, [
+        el("div.plan-ico", { text: p.mode === "surprise" ? "🎁" : "🗓️" }),
+        el("div.plan-info", {}, [
+          el("div.plan-name", { text: p.title }),
+          el("div.plan-sub", { text: `${fmtDate(p.date)} · ${p.stops.length} stops` }),
+        ]),
+        badge,
       ]),
-      badge,
+      calBtn(p, false),
     ]);
   })));
 }
@@ -147,6 +221,8 @@ export async function renderPlanDetail(root, id, viewer = "creator") {
       el("button.btn.btn-primary", { text: "📤 Share", onclick: () => sharePlan(plan) }),
       el("button.btn.btn-soft", { text: "👁 Preview surprise", onclick: () => location.hash = `#/plan/${plan.id}?as=guest` }),
     ]),
+    el("button.btn.btn-soft.btn-block", { text: "📅 Sync to calendar", style: "margin-top:10px",
+      onclick: () => syncToCalendar(plan, byId, false) }),
     el("button.btn.btn-ghost.btn-block", { text: "🗑 Delete plan", style: "margin-top:10px;color:var(--bad)",
       onclick: () => confirmDelete(plan) }),
   ]));
